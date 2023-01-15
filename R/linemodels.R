@@ -1,7 +1,7 @@
-# linemodels (0.1.0): An R package to cluster 2-dimensional effects into
+# linemodels (0.2.0): An R package to cluster 2-dimensional effects into
 #  groups defined by linear relationships.
-# DATE: 4-Oct-2022
-# Copyright (C) 2022 Matti Pirinen
+# DATE: 15-Jan-2023
+# Copyright (C) 2022-2023, Matti Pirinen
 # Contact: matti.pirinen@helsinki.fi
 # LICENSE:
 #   This program is free software; you can redistribute it and/or modify
@@ -21,38 +21,39 @@
 # The line models are defined by three parameters
 # scale = standard deviation of the (larger) effect
 # slope = slope of line around which the effects are scattered
-# cor = non-negative correlation between effects where cor = 1 means the same effect size
+# cor = non-negative correlation between effects,
+# where cor = 1 means the same effect size and cor = 0 means independent effects
 # A line model has the following properties:
 #
 # 1) effects are scattered around line y = slope*x.
-#    'slope' can be any real number or Inf (in which case effect x is zero)
+#    'slope' can be any real number or Inf (in which case effect x = 0)
 #
 # 2) the larger of the prior variances of effects is scale^2
 #    That is, if |slope| <= 1, then Var(x) = scale^2
 #             if |slope| > 1, then Var(y) = scale^2
 #
-# 3) Distribution around the line is determined as follows:
+# 3) Distribution of effects around the line is determined as follows:
 #    Consider a distribution scattered around line y = x with correlation 'cor'.
 #    Rotate that distribution by an orthogonal rotation defined by angle
 #    theta = atan(slope) - pi/4
 #    and use the corresponding distribution, scaled so that the maximum variance
 #    of the two effects is scale^2.
 #    NOTE: This is not same as "correlation 'cor' around line y = slope*x",
-#          because the shape of that distribution depends on slope, but
-#          we do not want such dependency in order to be consistent across slopes.
+#          because the shape of that distribution depends on the slope, but
+#          definition we use here is independent of slope (up to an orthogonal transformation).
 #
 # Examples:
 # Set scale = 0 to get the null model. (Values of slope and cor do not matter in this case.)
 # Use scale > 0, slope = 1 and cor = 0 to get independent effects model.
 # Use scale > 0, slope = 1 and cor = 1 to get fixed effects model.
 # Use scale > 0, slope = 1 and 0 < cor < 1  to get correlated effects model.
-#               note that values need to be quite near cor = 1 to get similar values
+#               note that cor value needs to be quite near 1 to get very similar values
 #               between the two effects with high probability (e.g. cor = 0.99 or 0.999).
 #
-# To choose a reasonable scale, note that 95% of the effects will be < 2*scale.
+# To choose a reasonable scale, note that 95% of the effects are assumed to be < 2*scale.
 
 #
-# There are 6 functions for user to call:
+# Seven functions that are meant for user to call directly are listed below.
 #
 
 # visualize.line.models(scales, slopes, cors,
@@ -63,40 +64,64 @@
 #                      cex.lab = 1, cex.axis = 1,
 #                      line.lty = 1, region.lty = 2,
 #                      line.lwd = 1, region.lwd = 1,
+#                      plot.grid = TRUE,
+#                      plot.new = TRUE,
 #                      emphasize.axes = TRUE)
-# -- To visualize the lines and 95% highest probability regions of the models.
+# -- To visualize the line models and their 95% highest probability regions.
 
-#visualize.scales(scales, scale.weights = c(1),
-#                 model.names = NULL, model.cols = NULL,
-#                 legend.position = "topleft")
-# -- To visulaize the univariate distributions of the effect sizes.
+# visualize.classification.regions(
+#           scales, slopes, cors, SE,
+#           r.lkhood = 0,
+#           model.priors = rep(1,length(scales)),
+#           col.palette = NULL,
+#           add.legend = TRUE,
+#           xlim = NULL, ylim = NULL,
+#           breakpoints = 200,
+#           xlab = "EFFECT1", ylab = "EFFECT2",
+#           cex.lab = 1, cex.axis = 1,
+#           line.lty = 1, region.lty = 2,
+#           line.lwd = 1, region.lwd = 1,
+#           emphasize.axes = TRUE)
+# -- To visualize the classification regions of two competing line models.
+
+# visualize.scales(scales, scale.weights = c(1),
+#                  model.names = NULL, model.cols = NULL,
+#                  legend.position = "topleft")
+# -- To visualize the univariate distributions of the effect sizes.
 
 # line.models(X, SE,
 #             scales, slopes, cors,
 #             model.names = NULL,
 #             model.priors = rep(1/length(slopes), length(slopes)),
 #             r.lkhood = 0, scale.weights = c(1))
-# -- To evaluate the model probabilities for each opservation separately.
+# -- To evaluate the model probabilities for each observation separately.
 
 # line.models.with.proportions(X, SE,
 #                             scales, slopes, cors,
 #                             model.names = NULL,
 #                             r.lkhood = 0,
-#                             n.iter = 200, n.burnin = 20)
+#                             n.iter = 200, n.burnin = 20,
+#                             diri.prior = rep(1/length(scales),length(scales)),
+#                             verbose = TRUE)
 # -- To evaluate the model probabilities together with the proportions of
 #    observations coming from each model. Uses Gibbs sampler for a joint
 #    estimation of membership probabilities across all observations.
 
 # line.models.optimize(X, SE,
-#           par.include = matrix(TRUE, nrow = length(init.slopes), ncol = 3),
-#           init.scales, init.slopes, init.cors,
-#           model.priors = rep(1,length(init.slopes)),
-#           model.names = NULL,
-#           r.lkhood = 0, tol =  1e-3)
+#                      par.include = matrix(TRUE, nrow = length(init.slopes), ncol = 3),
+#                      force.same.scales = FALSE,
+#                      init.scales, init.slopes, init.cors,
+#                      model.priors = rep(1,length(init.slopes)),
+#                      model.names = NULL,
+#                      r.lkhood = 0,
+#                      tol.loglk =  1e-3,
+#                      tol.par = 0,
+#                      return.weights = FALSE){
 # -- To use EM-algorithm to optimize chosen parameters of the line models.
 
 # sample.line.model(n = 1, scale, slope, cor, scale.weights = c(1))
 # -- To generate samples from a line model.
+
 
 ################################################################################
 ############## FUNCTIONS #######################################################
@@ -110,7 +135,8 @@ prior.V <- function(scale = 0, slope = 1, cor = 0){
  # INPUT
  # scale > 0
  # slope in (-Inf,Inf]
- # cor >= 0, NOTE: negatively correlated effects are modeled by a negative slope
+ # cor >= 0, NOTE: negatively correlated effects are modeled by a negative slope,
+ #                 not by a negative correlation
 
   if(cor > 1) stop("cor > 1")
   if(cor < 0) stop("cor < 0")
@@ -134,7 +160,7 @@ rdirichlet <- function(alpha){
   # Random sampling from Dirichlet distribution with parameter vector alpha.
 
   g = rgamma(length(alpha), shape = alpha, scale = 1)
-  return(g/sum(g))
+  return(g / sum(g))
 }
 
 
@@ -170,6 +196,8 @@ log.dmvnorm <- function(x, mu = rep(0, length(x)), S = diag(1, length(x)) ){
 #' @param line.lwd width of lines
 #' @param region.lty plotting type for 95\% regions (1 = solid, 2 = dashed ...)
 #' @param region.lwd width of line for 95\% regions
+#' @param plot.grid, if TRUE, plots a grid
+#' @param plot.new if TRUE, makes a new plot, if FALSE adds to existing plot
 #' @param emphasize.axes if TRUE, coordinate axes are marked with a black line
 #' @return none
 #' @examples
@@ -177,7 +205,7 @@ log.dmvnorm <- function(x, mu = rep(0, length(x)), S = diag(1, length(x)) ){
 #' @export
 # Note: Does NOT allow specification of 'scale.weights'
 # but uses the given scales as the single component for each distribution.
-# (This is because HDR of a mixture of Gaussians is not simple to compute.)
+# This is because probability regions of a mixture of Gaussians is not simple to compute.
 visualize.line.models <- function(scales, slopes, cors,
                                   model.names = NULL, model.cols = NULL,
                                   legend.position = "bottomright",
@@ -186,6 +214,8 @@ visualize.line.models <- function(scales, slopes, cors,
                                   cex.lab = 1, cex.axis = 1,
                                   line.lty = 1, region.lty = 2,
                                   line.lwd = 1, region.lwd = 1,
+                                  plot.grid = TRUE,
+                                  plot.new = TRUE,
                                   emphasize.axes = TRUE){
 
   K = length(slopes) #number of models
@@ -195,13 +225,14 @@ visualize.line.models <- function(scales, slopes, cors,
   lim = 3*max(scales) #Default: show models within 3 SDs
   if(is.null(xlim)) xlim = c(-lim,lim)
   if(is.null(ylim)) ylim = c(-lim,lim)
-  plot(NULL, xlim = xlim, ylim = ylim, xlab = xlab, ylab = ylab,
-       cex.lab = cex.lab, cex.axis = cex.axis)
+  if(plot.new){
+    plot(NULL, xlim = xlim, ylim = ylim, xlab = xlab, ylab = ylab,
+         cex.lab = cex.lab, cex.axis = cex.axis)}
   if(is.null(model.names)) model.names = paste0("M",1:K)
   if(is.null(model.cols)) model.cols = 1:K
   prob.level = 0.95
   b = qchisq(prob.level, df = 2)
-  grid()
+  if(plot.grid) grid()
   if(emphasize.axes){
     abline(h = 0, lwd = 1)
     abline(v = 0, lwd = 1)
@@ -230,6 +261,126 @@ visualize.line.models <- function(scales, slopes, cors,
   if(!is.null(legend.position)){
     legend(legend.position, pch = 15, leg = model.names, col = model.cols)}
 }
+
+#' Visualize classification regions of line models
+#'
+#' Colors the plane according to the classification probabilities
+#' of two competing line models.
+#' See help of 'line.models( )' for details about specifying the models.
+#'
+#' @param scales vector of standard deviations of larger effect of each model
+#' @param slopes vector of slopes of each model
+#' @param cors vector of correlation parameters of each model
+#' @param SE vector of two standard errors for effect1 and effect2, respectively
+#' @param r.lkhood correlation between estimators of the two effects
+#' @param model.priors vector of (unnormalized) prior probabilities of the two models
+#' @param col.palette vector of seven colors (with reasonable defaults)
+#' @param add.legend if TRUE, adds legend on right-hand side of the plot
+#' @param breakpoints how many breakpoints for defining the grid on each axis
+#' @param xlim,ylim,xlab,ylab,cex.lab,cex.axis standard plotting parameters
+#' @param line.lty plotting type for lines (1 = solid, 2 = dashed ...)
+#' @param line.lwd width of lines
+#' @param region.lty plotting type for 95\% regions (1 = solid, 2 = dashed ...)
+#' @param region.lwd width of line for 95\% regions
+#' @param emphasize.axes if TRUE, coordinate axes are marked with a black line
+#' @return none
+#' @examples
+#' visualize.classification.regions(c(0.1,0.2), c(1,0), c(0.995,0.995), c(0.05,0.05))
+#' @export
+# Note: Does NOT allow specification of 'scale.weights'
+# but uses the given scales as the single component for each distribution.
+visualize.classification.regions <-
+  function(scales, slopes, cors, SE,
+           r.lkhood = 0,
+           model.priors = rep(1,length(scales)),
+           col.palette = NULL,
+           add.legend = TRUE,
+           xlim = NULL, ylim = NULL,
+           breakpoints = 200,
+           xlab = "EFFECT1", ylab = "EFFECT2",
+           cex.lab = 1, cex.axis = 1,
+           line.lty = 1, region.lty = 2,
+           line.lwd = 1, region.lwd = 1,
+           emphasize.axes = TRUE){
+
+  K = length(slopes) #number of models
+  if(K != 2) stop("Should specify exactly two models.")
+  if(length(scales) != K) stop("Length of 'scales' and 'slopes' do not match.")
+  if(length(cors) != K) stop("Length of 'scales' and 'slopes' do not match.")
+  if(any(cors > 1) | any(cors < 0)) stop("Some value of 'cors' is outside [0,1].")
+  if(length(SE) != 2 | any(SE <= 0)) stop("SE should have exactly two positive values.")
+  if(!is.null(col.palette) & length(col.palette) !=7) stop("col.palette should have exactly 7 colors")
+  if(length(breakpoints) != 1 | breakpoints[1]<2) stop("Value of brekpoints must be a single integer > 1")
+  lim = 3*max(scales) #Default: show models within 3 SDs
+  if(is.null(xlim)) xlim = c(-lim,lim)
+  if(is.null(ylim)) ylim = c(-lim,lim)
+  if(is.null(col.palette)) col.palette = c("blue","skyblue","gray","salmon","red","white","black")
+
+  K = breakpoints
+  x = cbind(
+    rep(seq(xlim[1], xlim[2], length = K), K),
+    rep(seq(ylim[1], ylim[2], length = K), each = K),
+    rep(SE[1], K^2),
+    rep(SE[2], K^2))
+
+  res = line.models(
+    X = x[,1:2],
+    SE = x[,3:4],
+    scales = scales,
+    slopes = slopes,
+    model.priors = model.priors,
+    cors = cors,
+    r.lkhood = r.lkhood
+    )
+
+  cols = rep(col.palette[1], nrow(res))
+  cols[res[,1] < 0.9] = col.palette[2]
+  cols[res[,1] < 0.6] = col.palette[3]
+  cols[res[,1] < 0.4] = col.palette[4]
+  cols[res[,1] < 0.1] = col.palette[5]
+
+  if(add.legend) layout(matrix(c(1,2),nrow = 1), widths = c(3.5, 1))
+
+  visualize.line.models(scales, slopes, cors,
+                        xlim = xlim, ylim = ylim,
+                        legend.position = NULL, model.cols = col.palette[c(6,7)],
+                        xlab = xlab, ylab = ylab,
+                        cex.lab = cex.lab, cex.axis = cex.axis)
+
+  points(x[,1], x[,2], pch = 15, cex = 0.7, col = cols)
+
+  visualize.line.models(scales, slopes, cors,
+                        xlim = xlim, ylim = ylim,
+                        legend.position = NULL, plot.new = FALSE,
+                        model.cols = col.palette[c(6,7)],
+                        xlab = xlab, ylab = ylab,
+                        plot.grid = FALSE,
+                        cex.lab = cex.lab, cex.axis = cex.axis,
+                        line.lwd = line.lwd, region.lwd = region.lwd)
+
+  if(add.legend){
+    par(mar = c(0,0,0,0))
+    plot.new()
+    text(0.1, 0.80, expression(M[1]))
+    text(0.5, 0.80, paste0("scale ",signif(scales[1],3),
+                        "\nslope ",signif(slopes[1],3),
+                        "\ncor ",signif(cors[1],3)), cex = 0.7)
+    text(0.1, 0.62, expression(M[2]))
+    text(0.5, 0.62, paste0("scale ",signif(scales[2],3),
+                         "\nslope ",signif(slopes[2],3),
+                         "\ncor ",signif(cors[2],3)), cex = 0.7)
+
+    legend(0.0, 0.5, leg = c(expression(paste(M[1],epsilon,"[0.9,1.0]")),
+                             expression(paste(M[1],epsilon,"[0.6,0.9)")),
+                             expression(paste(M[1],epsilon,"[0.4,0.6)")),
+                             expression(paste(M[1],epsilon,"[0.1,0.4)")),
+                             expression(paste(M[1],epsilon,"[0.0,0.1)"))),
+           pch = 15, col = col.palette[1:5], cex = 0.8)
+
+    text(0.5, 0.15,paste0("SE = (",signif(SE[1],3),", ",signif(SE[2],3),")"), cex = 0.8)
+  }
+}
+
 
 #' Visualize effect distributions of line models
 #'
@@ -308,7 +459,8 @@ visualize.scales <- function(scales, scale.weights = c(1),
 #' The line models are defined by three parameters:
 #' scale = standard deviation of the (larger) effect,
 #' slope = slope of line around which the effects are scattered,
-#' cor = non-negative correlation between effects where cor = 1 means equal effect size.
+#' cor = non-negative correlation between effects,
+#' where cor = 1 means the same effect and cor = 0 means independent effects.
 #'
 #' A line model has the following properties:
 #'
@@ -436,11 +588,14 @@ line.models <- function(X, SE,
       tmp = sapply(1:n.comps, function(jj){
         log.dmvnorm(X[ii,], mu = c(0,0), S = V + pr.V[[kk]][[jj]])})
       tmp = tmp + log(scale.weights[kk,])
-      logdnorm[ii,kk] = log(sum(exp(tmp)))
+      tmp.max = max(tmp)
+      logdnorm[ii,kk] = log(sum(exp(tmp - tmp.max))) + tmp.max
     }
   }
-  p = exp(t(t(logdnorm) + log(pis)))
-  res = p/rowSums(p)
+  tmp = t(t(logdnorm) + log(pis))
+  tmp.max = apply(tmp, 1, max)
+  p = exp(tmp - tmp.max)
+  res = p / rowSums(p)
   colnames(res) = model.names
   return(res)
 }
@@ -452,7 +607,8 @@ line.models <- function(X, SE,
 #' The line models are defined by three parameters:
 #' scale = standard deviation of the (larger) effect,
 #' slope = slope of line around which the effects are scattered,
-#' cor = non-negative correlation between effects where cor = 1 means equal effect size.
+#' cor = non-negative correlation between effects,
+#' where cor = 1 means the same effect and cor = 0 means independent effects.
 #'
 #' A line model has the following properties:
 #'
@@ -474,7 +630,7 @@ line.models <- function(X, SE,
 #'          definition we use here is independent of slope (up to an orthogonal transformation).
 #'
 #' The prior distribution of the mixture proportions is Dirichlet(diri.prior) and
-#' a Gibbs sampler is used to estimate the posterior.
+#' a Gibbs sampler is used for estimating the posterior.
 #'
 #' @param X matrix of effect sizes with two columns (one col per trait)
 #' @param SE matrix of standard errors with two columns (one col per trait)
@@ -508,7 +664,7 @@ line.models.with.proportions <- function(X, SE,
                                          diri.prior = rep(1/length(scales),length(scales)),
                                          verbose = TRUE){
 
- # Gibbs sampler to evaluates model probabilities for all data points jointly
+ # Gibbs sampler to evaluate model probabilities for all data points jointly
  #  together with the posterior of the mixture proportions 'pi'.
  # INPUT
  # X, N x 2 matrix where rows are observations/variables
@@ -582,7 +738,9 @@ line.models.with.proportions <- function(X, SE,
       log.pis = log(pis)
 
       #sample group indicators for variants
-      p = exp(t(t(logdnorm) + log.pis)) #no need to normalize for 'sample()'
+      tmp = t(t(logdnorm) + log.pis)
+      p = exp(tmp - apply(tmp, 1, max))
+      #p = p/rowSums(p) #no need to normalize for 'sample()'
       grs = apply(p, 1, function(pr){sample(1:K, size = 1, prob = pr)})
       if(ii > n.burnin){ #save results if burn-in is over
         R.ind[(1:n) + n*(grs-1)] = 1 + R.ind[(1:n) + n*(grs-1)]
@@ -606,17 +764,21 @@ line.models.loglkhood <- function(X, SE,
                                   scales, slopes, cors,
                                   model.priors = rep(1/length(slopes), length(slopes)),
                                   model.names = NULL,
-                                  r.lkhood = 0, return.model.post = FALSE){
+                                  r.lkhood = 0,
+                                  return.posteriors = FALSE){
 
   # Evaluates log-likelihood of the data given the parameters
   #  X, SE, scales, slopes, cors, model.priors, model.names, r.lkhood
   #  are like in line.models().
   # Does not allow scale.weights from line-models().
   #
-  # If return.model.post = FALSE, then returns
-  #  the expected log likelihood over posterior of memberships
-  #  as needed by an EM-algorithm.
-  # If return.model.post = TRUE, then returns
+  #  Returns the log-likelihood of the mixture model
+  #  where the components have the mixture weights proportional to 'model.priors'
+  #  and the weights are the same for all the observations.
+
+  # If return.posteriors = TRUE, then returns a list with two members
+  #  'loglkhood' and
+  #  'membership.prob' matrix with
   #  posterior probabilities of observations' (rows)
   #  membership in each model (columns).
 
@@ -647,20 +809,58 @@ line.models.loglkhood <- function(X, SE,
     }
   }
 
-  p = exp(t(t(logdnorm) + log(pis)))
-  post = p/rowSums(p)
-  colnames(post) = model.names
-  if(return.model.post){
-    return(post)
-  }else{
-    #Compute actual log-lkhood for given parameters:
-    # log.lkhood = sum(log(rowSums(exp(t(t(logdnorm) + log(pis))))))
+  tmp = t(t(logdnorm) + log(pis))
+  tmp.max = apply(tmp, 1, max)
+  log.rowsums = log(rowSums(exp(tmp - tmp.max))) + tmp.max
+  log.lkhood = sum(log.rowsums)
 
-    #Compute expectation of log-lkhood under posterior of membership.
-    # This is what is needed for EM-algorithm.
-    log.lkhood = sum(log(rowSums(exp(logdnorm + log(post)))))
-    return(log.lkhood)
+  if(return.posteriors){
+    post = exp(tmp - log.rowsums)
+    colnames(post) = model.names
+    return(list(loglkhood = log.lkhood, membership.prob = post))}
+  else{
+    return(log.lkhood)}
+}
+
+
+
+line.models.expected.loglkhood <- function(X, SE,
+                                           scales, slopes, cors,
+                                           r.lkhood = r.lkhood,
+                                           posteriors = posteriors){
+
+  # Evaluates expected log-likelihood of the data given the parameters
+  # and the posterior probability of membership of each variant in each model.
+  #  X, SE, scales, slopes, cors, r.lkhood
+  #  are like in line.models().
+  # 'posteriors' is a matrix with one row per variant and one column per model.
+  # NOTE: values of posteriors are not checked for non-negativity or row sums = 1.
+  # This function is being optimized by the EM-algorithm.
+
+  K = length(slopes) #number of models
+  if(length(scales) != K) stop("Length of 'scales' and 'slopes' do not match.")
+  if(length(cors) != K) stop("Length of 'scales' and 'slopes' do not match.")
+  if(any(cors > 1) || any(cors < 0)) stop("Some value of 'cors' is outside [0,1].")
+  if(r.lkhood < (-1) || r.lkhood > 1) stop("'r.lkhood' is outside [-1,1].")
+  if(ncol(X) != 2) stop("Input data 'X' must have exactly two columns.")
+  if(ncol(SE) != 2) stop("Input data 'SE' must have exactly two columns.")
+  if(nrow(X) != nrow(SE)) stop("Input data 'X' and SE' must have the same no. of columns.")
+  if(nrow(posteriors) != nrow(X)) stop("Input data 'X' and 'posteriors' must have the same no. of rows.")
+  if(ncol(posteriors) != K) stop("posteriors must have one column per each model")
+
+  pr.V = list() #list of prior matrices of each model
+  for(kk in 1:K) pr.V[[kk]] = prior.V(scale = scales[kk], slope = slopes[kk], cor = cors[kk])
+
+  n = nrow(X)
+  R.lkhood = matrix(c(1, r.lkhood, r.lkhood, 1), 2, 2)
+  logdnorm = matrix(NA, ncol = K, nrow = n)
+  for(ii in 1:n){
+    V = diag(SE[ii,]) %*% R.lkhood %*% diag(SE[ii,]) #var of likelihood
+    for(kk in 1:K){
+      logdnorm[ii,kk] = log.dmvnorm(X[ii,], mu = c(0,0), S = V + pr.V[[kk]])
+    }
   }
+  return(sum(posteriors * logdnorm)) #expected log-likelihood
 }
 
 
@@ -710,10 +910,11 @@ par.to.current <- function(par, current, par.include){
 
 
 
-optim.fn <- function(par, current, par.include, X, SE,
-                     model.priors, model.names, r.lkhood){
+optim.fn <- function(par, current, par.include, force.same.scales, X, SE,
+                     r.lkhood, posteriors){
 
-  # Defines log-lkhood function to be optimized by the EM-algorithm.
+  # Defines expectation of the log-lkhood function to be optimized by
+  # the EM-algorithm.
   # 'current' has current values of the parameters (1 row, 3 cols per model)
   # 'par.include' matrix defines which parameters are to be optimized.
   #       Matrix has 1 row and 3 cols per model and columns correspond to
@@ -722,14 +923,18 @@ optim.fn <- function(par, current, par.include, X, SE,
   #       3 = correlation
   #NOTE: scales have been log-transformed and correlations logit-transformed before
   #      calling this function. Hence back-transforming them first.
+  # If 'force.same.scales = TRUE, then sets all scale parameters equal.
+  #     in this case, 1st col of par.include is (TRUE, FALSE, FALSE, ..., FALSE)
+  # posteriors is matrix with one row per variant and one col per model
+  #   and gives the posterior probability of the membership of variant in model
 
   current = par.to.current(par, current, par.include)
-  -line.models.loglkhood(X, SE,
+  if(force.same.scales) current[,1] = current[1,1]
+  -line.models.expected.loglkhood(X, SE,
                          scales = current[,1], slopes = current[,2], cors = current[,3],
-                         model.priors = model.priors,
-                         model.names = model.names, r.lkhood = r.lkhood,
-                         return.model.post = FALSE)
+                         r.lkhood = r.lkhood, posteriors = posteriors)
 }
+
 
 
 #' Optimize parameters of line models
@@ -738,7 +943,8 @@ optim.fn <- function(par, current, par.include, X, SE,
 #' The line models are defined by three parameters:
 #' scale = standard deviation of the (larger) effect,
 #' slope = slope of line around which the effects are scattered,
-#' cor = non-negative correlation between effects where cor = 1 means equal effect size.
+#' cor = non-negative correlation between effects,
+#' where cor = 1 means the same effect and cor = 0 means independent effects.
 #'
 #' A line model has the following properties:
 #'
@@ -768,32 +974,48 @@ optim.fn <- function(par, current, par.include, X, SE,
 #' @param par.include matrix of TRUE/FALSE values TRUE indicating which parameters
 #' are optimized. One row per model and 3 columns corresponding
 #' to 'scales', 'slopes' and 'cors', respectively.
+#' @param force.same.scales logical; If TRUE, then forces all scale parameters equal
 #' @param init.scales vector of initial standard deviations of larger effect of each model
 #' @param init.slopes vector of initial slopes of each model
 #' @param init.cors vector of initial correlation parameters of each model
 #' @param model.priors vector of initial prior probabilities of models up to a normalization constant
 #' @param model.names vector of names of each model
 #' @param r.lkhood correlation between estimators of the two effects
-#' @param tol tolerance for convergence in log-likelihood between
-#' adjacent iterations
+#' @param tol.loglk tolerance for convergence in adjacent log-likelihoods
+#' @param tol.par tolerance for convergence in maximum of absolute values of relative differences
+#' across parameters between adjacent iterations. Can be set negative to determine
+#' the convergence solely by log-likelihood.
+#' @param return.weights logical; If TRUE returns both optimized mixture weights and
+#' optimized parameters. If FALSE returns only optimized parameters.
 
-#' @return matrix with models in rows and columns:
+#' @return If 'return.weights' = FALSE, returns matrix with models in rows and columns:
 #' (1) scales, (2) slopes, (3) correlations.
+#' If 'return.weights = TRUE, then returns a list with two components
+# 'weights' giving the mixture weights of the components and
+# 'parameters' giving the matrix as above.
+
 #' @examples
 #' line.models.optimize(
 #'      X = linemodels.ex1[,1:2],
 #'      SE = linemodels.ex1[,3:4],
 #'      par.include = rbind(c(F,F,F), c(F,T,T), c(F,F,F)),
+#'      force.same.scales = FALSE,
 #'      init.scales = c(0.2, 0.2, 0.2),
 #'      init.slopes = c(0, 0.2, 1),
 #'      init.cors = c(0.995, 0.5, 0.995))
 #' @export
 line.models.optimize <- function(X, SE,
-                                 par.include = matrix(TRUE, nrow = length(init.slopes), ncol = 3),
+                                 par.include = matrix(TRUE,
+                                                      nrow = length(init.slopes),
+                                                      ncol = 3),
+                                 force.same.scales = FALSE,
                                  init.scales, init.slopes, init.cors,
                                  model.priors = rep(1,length(init.slopes)),
                                  model.names = NULL,
-                                 r.lkhood = 0, tol =  1e-3){
+                                 r.lkhood = 0,
+                                 tol.loglk =  1e-3,
+                                 tol.par = 0,
+                                 return.weights = FALSE){
 
   # EM algorithm to optimize chosen parameters of the line models.
   #
@@ -812,13 +1034,21 @@ line.models.optimize <- function(X, SE,
   #  will remain fixed to their initial values. Proportion parameters
   #  are always optimized over by the algorithm.
   #
-  # tol, defines tolerance for maximum difference in log-likelihood
-  #  in adjacent iterations that is still considered to show convergence.
+  # tol.loglk, defines tolerance for maximum difference in log-likelihood
+  #  between adjacent iterations that is still considered to show convergence.
+  # tol.par, defines tolerance for abolute value of maximum relative difference
+  # in optimized parameters between adjacent iterations that is still
+  # considered to show convergence.
+  # Convergence happens when either of the tolearances above are achieved.
+  # NOTE: tol.par can be set negative to determine convergence by only loglkhood.
 
   # OUTPUT:
   # matrix with all model parameters.
   #  Rows per models, 3 columns for
   #  (1) scales, (2) slopes, (3) correlations.
+  # If 'return.weights = TRUE, then list with two components
+  # 'proportions' giving the mixture weights of the components
+  # 'parameters' matrix as above.
 
   K = length(init.slopes)
   if(length(init.scales) != K) stop("Lengths of init.slopes and init.scales do not match.")
@@ -828,18 +1058,28 @@ line.models.optimize <- function(X, SE,
   if(abs(r.lkhood) > 1) stop("Correlation of likelihood, 'r.lkhood', should be in [-1,1].")
   if(any(init.scales <= 0)) stop("Scales should be positive.")
   if(any(model.priors <= 0)) stop("'model.priors' should be positive.")
+  if(tol.loglk <= 0) stop("Tolerance 'tol.loglk' should be positive.")
   if(!is.matrix(par.include) || nrow(par.include) != K || ncol(par.include) != 3)
     stop("par.include should be a matrix with 1 row and 3 cols per model")
 
-  iter = 0
   current = cbind(init.scales, init.slopes, init.cors) #current values of parameters
-  converged = FALSE
-  log.lkhood = -Inf
+  if(force.same.scales) {
+    current[,1] = mean(current[,1]) #initialize
+    par.include[, 1] = c(TRUE, rep(FALSE, nrow(par.include)-1)) #only 1 parameter
+  }
+  w = model.priors/sum(model.priors)
+  log.lkhood = line.models.loglkhood(X, SE,
+                                     scales = current[,1], slopes = current[,2], cors = current[,3],
+                                     model.priors = w,
+                                     model.names = model.names, r.lkhood = r.lkhood,
+                                     return.posteriors = FALSE)
 
   cat(paste0("Initial values\n"))
   cat(paste("scales:",paste(signif(current[,1],4),collapse=", ")),"\n")
   cat(paste("slopes:",paste(signif(current[,2],4),collapse=", ")),"\n")
   cat(paste("cors:",paste(signif(current[,3],4),collapse=", ")),"\n")
+  cat(paste("proportions:", paste(signif(w,3),collapse =", ")),"\n")
+  cat(paste("Initial log-lkhood:",signif(log.lkhood,8),"\n"))
   par.names = cbind(paste0("scale",1:K), paste0("slope",1:K), paste0("cor",1:K))
   cat(paste("Optimizing w.r.t:",
               paste(par.names[par.include], collapse = " ")))
@@ -867,38 +1107,73 @@ line.models.optimize <- function(X, SE,
     cat(paste0(", over the range: (",
                signif(lw.orig,4),",",signif(up.orig,4),")"))
   }
+  if(force.same.scales) cat(paste("\nForcing all scales to be equal"))
+  cat("\nConvergence criteria:\n")
+  cat(paste(" Relative diff in parameters <=",tol.par," or\n"))
+  cat(paste(" Difference in log-likelihood <",tol.loglk))
   cat("\n\n")
+
+  iter = 0
+  converged = FALSE
 
   while(!converged){
     iter = iter + 1
+    prev.log.lkhood = log.lkhood
+    prev.vals = current
+
+    #Maximizes over proportions:
     pr = line.models.loglkhood(X, SE,
                                scales = current[,1], slopes = current[,2], cors = current[,3],
-                               model.priors = model.priors,
+                               model.priors = w,
                                model.names = model.names, r.lkhood = r.lkhood,
-                               return.model.post = TRUE)
-
-    model.priors = apply(pr, 2, mean) #these proportions maximize the lkhood
+                               return.posteriors = TRUE)$membership.prob
 
     #Maximizes over other parameters than proportions:
     par = current.to.par(current, par.include)
     opt.out = optim(par, optim.fn, current = current, par.include = par.include,
-                    X = X, SE = SE, model.priors = model.priors, model.names = model.names,
+                    force.same.scales = force.same.scales,
+                    X = X, SE = SE, posteriors = pr,
                     r.lkhood = r.lkhood, method = op.method, lower = lower, upper = upper)
 
-    converged = (-opt.out$value - log.lkhood  < tol)
-    if(-opt.out$value > log.lkhood){
-      log.lkhood = -opt.out$value
-      current = par.to.current(opt.out$par, current, par.include)
+    #these proportions (w) and parameters (par) maximize the lkhood
+    new.w = apply(pr, 2, mean)
+    new.par = par.to.current(opt.out$par, current, par.include)
+
+    if(force.same.scales) new.par[,1] = new.par[1,1]
+
+    new.log.lkhood = line.models.loglkhood(X, SE,
+                          scales = new.par[,1], slopes = new.par[,2], cors = new.par[,3],
+                          model.priors = new.w,
+                          model.names = model.names, r.lkhood = r.lkhood,
+                          return.posteriors = FALSE)
+
+    if(new.log.lkhood > log.lkhood){
+      log.lkhood = new.log.lkhood
+      w = new.w
+      current = new.par
       cat(paste("iter:",iter,"; log-lkhood:",signif(log.lkhood,8)),"\n")
-      cat(paste("proportions:", paste(signif(model.priors,3),collapse =", ")),"\n")
+      cat(paste("Relative diffs in optimized parameters:",
+                paste(signif(as.vector(abs(((current - prev.vals)/prev.vals)[par.include])), 3),
+                             collapse =", ")),"\n")
+      cat(paste("proportions:", paste(signif(w,3),collapse =", ")),"\n")
       cat(paste("scales:", paste(signif(current[,1],4),collapse =", ")),"\n")
       cat(paste("slopes:", paste(signif(current[,2],4),collapse =", ")),"\n")
       cat(paste("cors:", paste(signif(current[,3],4),collapse =", ")),"\n\n")
     }
-    else{cat(paste("iter:",iter,"; Failed to increase log-likelihood further.\n"))}
+    else{ #will stop because both convergence criteria below are fulfilled
+      cat(paste("iter:",iter,"; Failed to increase log-likelihood further.",
+                "(previous:",signif(log.lkhood,8),"new:",signif(new.log.lkhood,8),")\n"))}
+
+    converged.par = all(as.vector(abs((current - prev.vals)/prev.vals)) <= tol.par)
+    converged.loglk = ((log.lkhood - prev.log.lkhood) < tol.loglk)
+    converged = converged.par | converged.loglk
   }
+
+  if(converged.par) cat("Parameter values converged.\n")
+  if(converged.loglk) cat("Log-likelihood value converged.\n")
   colnames(current) = c("scales", "slopes", "cors")
-  return(current)
+  if(return.weights) return(list(weights = w, parameters = current))
+  else return(current)
 }
 
 

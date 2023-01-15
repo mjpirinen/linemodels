@@ -1,0 +1,15 @@
+linemodels R-package, ChangeLog
+
+
+v.0.2.0 (15-Jan-2023)
+
+### Added
+- visualize.classification.regions( )
+
+### Fixed
+- EM-algorithm to optimize line model parameters
+
+
+v.0.1.0 (05-Oct-2022)
+
+First version release.
