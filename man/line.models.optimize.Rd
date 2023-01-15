@@ -8,13 +8,16 @@ line.models.optimize(
   X,
   SE,
   par.include = matrix(TRUE, nrow = length(init.slopes), ncol = 3),
+  force.same.scales = FALSE,
   init.scales,
   init.slopes,
   init.cors,
   model.priors = rep(1, length(init.slopes)),
   model.names = NULL,
   r.lkhood = 0,
-  tol = 0.001
+  tol.loglk = 0.001,
+  tol.par = 0,
+  return.weights = FALSE
 )
 }
 \arguments{
@@ -25,6 +28,8 @@ line.models.optimize(
 \item{par.include}{matrix of TRUE/FALSE values TRUE indicating which parameters
 are optimized. One row per model and 3 columns corresponding
 to 'scales', 'slopes' and 'cors', respectively.}
+
+\item{force.same.scales}{logical; If TRUE, then forces all scale parameters equal}
 
 \item{init.scales}{vector of initial standard deviations of larger effect of each model}
 
@@ -38,19 +43,27 @@ to 'scales', 'slopes' and 'cors', respectively.}
 
 \item{r.lkhood}{correlation between estimators of the two effects}
 
-\item{tol}{tolerance for convergence in log-likelihood between
-adjacent iterations}
+\item{tol.loglk}{tolerance for convergence in adjacent log-likelihoods}
+
+\item{tol.par}{tolerance for convergence in maximum of absolute values of relative differences
+across parameters between adjacent iterations. Can be set negative to determine
+the convergence solely by log-likelihood.}
+
+\item{return.weights}{logical; If TRUE returns both optimized mixture weights and
+optimized parameters. If FALSE returns only optimized parameters.}
 }
 \value{
-matrix with models in rows and columns:
+If 'return.weights' = FALSE, returns matrix with models in rows and columns:
 (1) scales, (2) slopes, (3) correlations.
+If 'return.weights = TRUE, then returns a list with two components
 }
 \description{
 Consider two effects:  x = effect1 and y = effect2.
 The line models are defined by three parameters:
 scale = standard deviation of the (larger) effect,
 slope = slope of line around which the effects are scattered,
-cor = non-negative correlation between effects where cor = 1 means equal effect size.
+cor = non-negative correlation between effects,
+where cor = 1 means the same effect and cor = 0 means independent effects.
 }
 \details{
 A line model has the following properties:
@@ -81,6 +94,7 @@ line.models.optimize(
      X = linemodels.ex1[,1:2],
      SE = linemodels.ex1[,3:4],
      par.include = rbind(c(F,F,F), c(F,T,T), c(F,F,F)),
+     force.same.scales = FALSE,
      init.scales = c(0.2, 0.2, 0.2),
      init.slopes = c(0, 0.2, 1),
      init.cors = c(0.995, 0.5, 0.995))

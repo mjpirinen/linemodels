@@ -45,7 +45,8 @@ Consider two effects:  x = effect1 and y = effect2.
 The line models are defined by three parameters:
 scale = standard deviation of the (larger) effect,
 slope = slope of line around which the effects are scattered,
-cor = non-negative correlation between effects where cor = 1 means equal effect size.
+cor = non-negative correlation between effects,
+where cor = 1 means the same effect and cor = 0 means independent effects.
 }
 \details{
 A line model has the following properties:
