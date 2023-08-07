@@ -17,7 +17,8 @@ line.models.optimize(
   r.lkhood = 0,
   tol.loglk = 0.001,
   tol.par = 0,
-  return.weights = FALSE
+  return.weights = FALSE,
+  print.steps = 1
 )
 }
 \arguments{
@@ -51,6 +52,11 @@ the convergence solely by log-likelihood.}
 
 \item{return.weights}{logical; If TRUE returns both optimized mixture weights and
 optimized parameters. If FALSE returns only optimized parameters.}
+
+\item{print.steps}{numeric;
+If 0, no optimization results are printed on screen.
+If 1, prints optimization results at start and end of each optimization call (default).
+If >1 prints status after every optimization iteration.}
 }
 \value{
 If 'return.weights' = FALSE, returns matrix with models in rows and columns:

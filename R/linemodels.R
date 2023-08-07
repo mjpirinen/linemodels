@@ -1,6 +1,6 @@
-# linemodels (0.2.1): An R package to cluster 2-dimensional effects into
+# linemodels (0.3.0): An R package to cluster 2-dimensional effects into
 #  groups defined by linear relationships.
-# DATE: 7-Aug-2023
+# DATE: 20-Nov-2023
 # Copyright (C) 2022-2023, Matti Pirinen
 # Contact: matti.pirinen@helsinki.fi
 # LICENSE:
@@ -53,7 +53,7 @@
 # To choose a reasonable scale, note that 95% of the effects are assumed to be < 2*scale.
 
 #
-# Seven functions that are meant for user to call directly are listed below.
+# 9 functions for user to call directly are listed below.
 #
 
 # visualize.line.models(scales, slopes, cors,
@@ -116,11 +116,36 @@
 #                      r.lkhood = 0,
 #                      tol.loglk =  1e-3,
 #                      tol.par = 0,
-#                      return.weights = FALSE){
+#                      return.weights = FALSE)
 # -- To use EM-algorithm to optimize chosen parameters of the line models.
 
 # sample.line.model(n = 1, scale, slope, cor, scale.weights = c(1))
 # -- To generate samples from a line model.
+
+#simulate.linemodels.for.observations(
+#    X, SE, linemodels.results = NULL,
+#    scales, slopes, cors, r.lkhood = 0)
+# -- To generate relaistic samples from a set of line models mimicking the observed data.
+
+# simulate.loglr(
+#    X, SE, n.sims = 100,
+#    par.include.null = matrix(TRUE,
+#                              nrow = length(init.slopes.null),
+#                              ncol = 3),
+#    force.same.scales.null = FALSE,
+#    init.scales.null, init.slopes.null, init.cors.null,
+#    model.priors.null = rep(1,length(init.slopes.null)),
+#    par.include.alt = matrix(TRUE,
+#                             nrow = length(init.slopes.alt),
+#                             ncol = 3),
+#    force.same.scales.alt = FALSE,
+#    init.scales.alt, init.slopes.alt, init.cors.alt,
+#    model.priors.alt = rep(1,length(init.slopes.alt)),
+#    r.lkhood = 0,
+#    tol.loglk = 1e-3,
+#    tol.par = 0,
+#    print.all.steps = FALSE)
+# -- To compute log likelihood ratio between alternative and null and estimate its null distribution
 
 
 ################################################################################
@@ -551,6 +576,7 @@ line.models <- function(X, SE,
   K = length(slopes) #number of models
   if(length(scales) != K) stop("Length of 'scales' and 'slopes' do not match.")
   if(length(cors) != K) stop("Length of 'scales' and 'slopes' do not match.")
+  if(length(model.priors) != K) stop("Length of 'model.priors' and 'slopes' do not match.")
   if(any(cors > 1) || any(cors < 0)) stop("Some value of 'cors' is outside [0,1].")
   if(r.lkhood < (-1) || r.lkhood > 1) stop("'r.lkhood' is outside [-1,1].")
   if(ncol(X) != 2) stop("Input data 'X' must have exactly two columns.")
@@ -786,6 +812,7 @@ line.models.loglkhood <- function(X, SE,
   if(is.null(model.names)) model.names = paste0("M",1:K)
   if(length(scales) != K) stop("Length of 'scales' and 'slopes' do not match.")
   if(length(cors) != K) stop("Length of 'scales' and 'slopes' do not match.")
+  if(length(model.priors) != K) stop("Length of 'model.priors' and 'slopes' do not match.")
   if(length(model.names) != K) stop("Length of 'model.names' and 'slopes' do not match.")
   if(any(cors > 1) || any(cors < 0)) stop("Some value of 'cors' is outside [0,1].")
   if(r.lkhood < (-1) || r.lkhood > 1) stop("'r.lkhood' is outside [-1,1].")
@@ -987,7 +1014,10 @@ optim.fn <- function(par, current, par.include, force.same.scales, X, SE,
 #' the convergence solely by log-likelihood.
 #' @param return.weights logical; If TRUE returns both optimized mixture weights and
 #' optimized parameters. If FALSE returns only optimized parameters.
-
+#' @param print.steps numeric;
+#' If 0, no optimization results are printed on screen.
+#' If 1, prints optimization results at start and end of each optimization call (default).
+#' If >1 prints status after every optimization iteration.
 #' @return If 'return.weights' = FALSE, returns matrix with models in rows and columns:
 #' (1) scales, (2) slopes, (3) correlations.
 #' If 'return.weights = TRUE, then returns a list with two components
@@ -1015,7 +1045,8 @@ line.models.optimize <- function(X, SE,
                                  r.lkhood = 0,
                                  tol.loglk =  1e-3,
                                  tol.par = 0,
-                                 return.weights = FALSE){
+                                 return.weights = FALSE,
+                                 print.steps = 1){
 
   # EM algorithm to optimize chosen parameters of the line models.
   #
@@ -1061,6 +1092,7 @@ line.models.optimize <- function(X, SE,
   if(tol.loglk <= 0) stop("Tolerance 'tol.loglk' should be positive.")
   if(!is.matrix(par.include) || nrow(par.include) != K || ncol(par.include) != 3)
     stop("par.include should be a matrix with 1 row and 3 cols per model")
+  if(!(print.steps %in% c(0,1,2))) stop("print.steps should be one of values 0, 1 or 2.")
 
   current = cbind(init.scales, init.slopes, init.cors) #current values of parameters
   if(force.same.scales) {
@@ -1074,16 +1106,20 @@ line.models.optimize <- function(X, SE,
                                      model.names = model.names, r.lkhood = r.lkhood,
                                      return.posteriors = FALSE)
 
-  cat(paste0("Initial values\n"))
-  cat(paste("scales:",paste(signif(current[,1],4),collapse=", ")),"\n")
-  cat(paste("slopes:",paste(signif(current[,2],4),collapse=", ")),"\n")
-  cat(paste("cors:",paste(signif(current[,3],4),collapse=", ")),"\n")
-  cat(paste("proportions:", paste(signif(w,3),collapse =", ")),"\n")
-  cat(paste("Initial log-lkhood:",signif(log.lkhood,8),"\n"))
   par.names = cbind(paste0("scale",1:K), paste0("slope",1:K), paste0("cor",1:K))
-  cat(paste("Optimizing w.r.t:",
-              paste(par.names[par.include], collapse = " ")))
-
+  if(print.steps > 0){
+    cat(paste0("\n\nInitial values\n"))
+    cat(paste("scales:",paste(signif(current[,1],4),collapse=", ")),"\n")
+    cat(paste("slopes:",paste(signif(current[,2],4),collapse=", ")),"\n")
+    cat(paste("cors:",paste(signif(current[,3],4),collapse=", ")),"\n")
+    cat(paste("proportions:", paste(signif(w,3),collapse =", ")),"\n")
+    cat(paste("Initial log-lkhood:",signif(log.lkhood,8),"\n"))
+    if(sum(par.include) > 0){
+      cat(paste("Optimizing w.r.t:",
+                paste(par.names[par.include], collapse = " ")))}
+   else{
+      cat(paste("All parameters are fixed. Optimizes only the proportions."))}
+  }
   #Nelder-Mead is not robust for 1-dimensional optimization --> uses "Brent" in 1-dim case
   # but Brent requires finite range of optimization so needs to set the range
   # depending on which type of the parameter is optimized.
@@ -1091,7 +1127,7 @@ line.models.optimize <- function(X, SE,
   op.method = ifelse(sum(par.include) > 1, "Nelder-Mead", "Brent")
   lower = -Inf # Leaves lower and upper as Infs if Nelder-Mead is used
   upper = Inf
-  if(op.method == "Brent"){ # otherwise specify the range for the single parameter
+  if(sum(par.include) == 1){ # otherwise specify the range for the single parameter
     if(sum(par.include[,1])){ # log-transformed scale parameter (1e-6, 1e+6)
       lw.orig = 1e-6; lower = log(lw.orig)
       up.orig = 1e+6; upper = log(up.orig)
@@ -1104,14 +1140,17 @@ line.models.optimize <- function(X, SE,
       lw.orig = 1e-6; lower = log(lw.orig / (1 - lw.orig))
       up.orig = 1 - 1e-6; upper = log(up.orig / (1 - up.orig))
     }
-    cat(paste0(", over the range: (",
-               signif(lw.orig,4),",",signif(up.orig,4),")"))
+    if(print.steps > 0){
+      cat(paste0(", over the range: (",
+                 signif(lw.orig,4),",",signif(up.orig,4),")"))}
   }
-  if(force.same.scales) cat(paste("\nForcing all scales to be equal"))
-  cat("\nConvergence criteria:\n")
-  cat(paste(" Relative diff in parameters <=",tol.par," or\n"))
-  cat(paste(" Difference in log-likelihood <",tol.loglk))
-  cat("\n\n")
+  if(print.steps > 0){
+    if(force.same.scales) cat(paste("\nForcing all scales to be equal"))
+    cat("\nConvergence criteria:\n")
+    cat(paste(" Relative diff in parameters <=",tol.par," or\n"))
+    cat(paste(" Difference in log-likelihood <",tol.loglk))
+    cat("\n\n")
+  }
 
   iter = 0
   converged = FALSE
@@ -1127,17 +1166,18 @@ line.models.optimize <- function(X, SE,
                                model.priors = w,
                                model.names = model.names, r.lkhood = r.lkhood,
                                return.posteriors = TRUE)$membership.prob
+    new.w = apply(pr, 2, mean)
 
     #Maximizes over other parameters than proportions:
-    par = current.to.par(current, par.include)
-    opt.out = optim(par, optim.fn, current = current, par.include = par.include,
-                    force.same.scales = force.same.scales,
-                    X = X, SE = SE, posteriors = pr,
-                    r.lkhood = r.lkhood, method = op.method, lower = lower, upper = upper)
-
-    #these proportions (w) and parameters (par) maximize the lkhood
-    new.w = apply(pr, 2, mean)
-    new.par = par.to.current(opt.out$par, current, par.include)
+    if(sum(par.include) > 0){
+      par = current.to.par(current, par.include)
+      opt.out = optim(par, optim.fn, current = current, par.include = par.include,
+                      force.same.scales = force.same.scales,
+                      X = X, SE = SE, posteriors = pr,
+                      r.lkhood = r.lkhood, method = op.method, lower = lower, upper = upper)
+      new.par = par.to.current(opt.out$par, current, par.include)}
+    else{ #no parameters to optimize
+      new.par = current}
 
     if(force.same.scales) new.par[,1] = new.par[1,1]
 
@@ -1150,27 +1190,31 @@ line.models.optimize <- function(X, SE,
     if(new.log.lkhood > log.lkhood){
       log.lkhood = new.log.lkhood
       w = new.w
-      current = new.par
+      current = new.par}
+    else{ #will stop because both convergence criteria below are fulfilled
+      if(print.steps > 1){
+        cat(paste("iter:",iter,"; Failed to increase log-likelihood further.",
+                  "(previous:",signif(log.lkhood,8),"new:",signif(new.log.lkhood,8),")\n"))}}
+
+    converged.par = all(as.vector(abs((current - prev.vals)/prev.vals)[par.include]) <= tol.par)
+    converged.loglk = ((log.lkhood - prev.log.lkhood) < tol.loglk)
+    converged = converged.par | converged.loglk
+    if((print.steps > 1) | (converged & (print.steps > 0))){
       cat(paste("iter:",iter,"; log-lkhood:",signif(log.lkhood,8)),"\n")
       cat(paste("Relative diffs in optimized parameters:",
                 paste(signif(as.vector(abs(((current - prev.vals)/prev.vals)[par.include])), 3),
-                             collapse =", ")),"\n")
+                      collapse =", ")),"\n")
       cat(paste("proportions:", paste(signif(w,3),collapse =", ")),"\n")
       cat(paste("scales:", paste(signif(current[,1],4),collapse =", ")),"\n")
       cat(paste("slopes:", paste(signif(current[,2],4),collapse =", ")),"\n")
       cat(paste("cors:", paste(signif(current[,3],4),collapse =", ")),"\n\n")
     }
-    else{ #will stop because both convergence criteria below are fulfilled
-      cat(paste("iter:",iter,"; Failed to increase log-likelihood further.",
-                "(previous:",signif(log.lkhood,8),"new:",signif(new.log.lkhood,8),")\n"))}
-
-    converged.par = all(as.vector(abs((current - prev.vals)/prev.vals)[par.include]) <= tol.par)
-    converged.loglk = ((log.lkhood - prev.log.lkhood) < tol.loglk)
-    converged = converged.par | converged.loglk
   }
 
-  if(converged.par) cat("Parameter values converged.\n")
-  if(converged.loglk) cat("Log-likelihood value converged.\n")
+  if(print.steps > 0){
+    if(converged.par) cat("Parameter values converged.\n")
+    if(converged.loglk) cat("Log-likelihood value converged.\n")
+  }
   colnames(current) = c("scales", "slopes", "cors")
   if(return.weights) return(list(weights = w, parameters = current))
   else return(current)
@@ -1224,3 +1268,273 @@ sample.line.model <- function(n = 1, scale, slope, cor, scale.weights = c(1)){
   return(x)
 }
 
+
+#' Simulate a data set from the observed data and given set of line models
+#'
+#' See help of 'line.models( )' for details about specifying the models.
+#'
+#' Generates effect estimates for each observed data point as follows.
+#' Pick up an underlying line model based on the given probabilities (default is uniform probabilities).
+#' Choose the primary coordinate to be x if the slope of the chosen model is in [-1,1],
+#' otherwise choose y as the primary coordinate.
+#' For the primary coordinate, choose the true effect size from the univariate posterior
+#' distribution given the observed estimate, its SE and the prior N(0, scale),
+#' where 'scale' is the scale parameter of the corresponding line model.
+#' Project the point on the line based on the primary coordinate.
+#' Rotate the point to be on the diagonal line y=x.
+#' Pick uniformly at random one coordinate to be perturbed and
+#'  sample the true effect of the chosen coordinate from the line model, conditional
+#'  on the current value of the other coordinate.
+#' Rotate the perturbed point back to correspond to the original slope.
+#' Finally, sample the observed effects from a bivariate Gaussian around the true values
+#' by accounting for SEs and r.lkhood.
+#'
+#' @param X matrix of effect sizes with two columns (one col per trait)
+#' @param SE matrix of standard errors with two columns (one col per trait)
+#' @param scales vector of standard deviations of larger effect of each model
+#' @param slopes vector of slopes of each model
+#' @param cors vector of correlation parameters of each model
+#' @param model.priors vector of prior probabilities of models up to a normalization constant
+#' @param r.lkhood correlation between estimators of the two effects
+#' @return matrix of simulated effect sizes with one column per trait and one row per observation in X
+#' @examples
+#' simulate.linemodels.for.observations(
+#'    X = linemodels.ex1[,1:2], SE = linemodels.ex1[,3:4],
+#'    scales = c(0.25, 0.25),
+#'    slopes = c(0, 1),
+#'    cors = c(0.995, 0.995))
+#' @export
+simulate.linemodels.for.observations <- function(
+    X, SE, linemodels.results = NULL,
+    scales, slopes, cors,
+    r.lkhood = 0){
+
+  n = nrow(X)
+  K = length(slopes) #number of models
+  if(length(scales) != K) stop("Length of 'scales' and 'slopes' do not match.")
+  if(length(cors) != K) stop("Length of 'scales' and 'slopes' do not match.")
+  if(any(cors > 1) || any(cors < 0)) stop("Some value of 'cors' is outside [0,1].")
+  if(r.lkhood < (-1) || r.lkhood > 1) stop("'r.lkhood' is outside [-1,1].")
+  if(ncol(X) != 2) stop("Input data 'X' must have exactly two columns.")
+  if(ncol(SE) != 2) stop("Input data 'SE' must have exactly two columns.")
+  if(nrow(X) != nrow(SE)) stop("Input data 'X' and SE' must have the same no. of columns.")
+  if(is.null(linemodels.results)){ #set equal probabilities for the models if not otherwise specified
+    linemodels.results = matrix(1, ncol = K, nrow = n)
+  }
+  if(any(linemodels.results < 0)) stop("All values in 'linemodels.results' must be non-negative.")
+
+  Y = matrix(NA, ncol = 2, nrow = n) #simulated effect sizes
+  for(ii in 1:n){
+    k = sample(1:K, size = 1, prob = linemodels.results[ii,])
+    primary = ifelse(abs(slopes[k]) <= 1, 1, 2)
+    v = 1/( 1/scales[k]^2 + 1/SE[ii, primary]^2) #posterior variance
+    mu = v*X[ii, primary] / SE[ii, primary]^2 #posterior mean
+    x = rnorm(1, mu, sqrt(v)) #samlpe a true effect for the primary coordinate
+    #set the second coordinate to be exactly on the line
+    if(primary == 1){x = c(x, slopes[k]*x)}
+    else{x = c(x/slopes[k], x)}
+
+    theta = atan(slopes[k]) - pi/4
+    # R is rotation matrix by angle theta
+    R = matrix(c(cos(theta), -sin(theta),
+                 sin(theta), cos(theta)),
+               ncol = 2, byrow = T)
+
+    # Rotate the point x to the diagonal line by t(R)
+    xx = t(R) %*% x
+    # Now xx[1] == xx[2] and we will randomly choose one coordinate to be sampled
+    # from the line model's distribution accounting for cor and scale
+    xx[sample(1:2, size = 1)] = rnorm(1, cors[k]*xx[1], sqrt((1 - cors[k]^2))*scales[k])
+    # Rotate the point back to correspond to the original slope
+    x = R %*% xx
+
+    # Sample the observation error around the point of true effects
+    # using the observed SEs and r.lkhood
+    V = diag(SE[ii,]) %*% matrix(c(1, r.lkhood, r.lkhood, 1), 2, 2) %*% diag(SE[ii,])
+    A = t(chol(V))
+    Y[ii,] = x + A %*% rnorm(2)
+  }
+  return(Y)
+}
+
+
+#' Compute observed log of likelihood ratio (LR) and its null distribution for the given scenario.
+#'
+#' See help of 'line.models( )' for details about specifying the models.
+#'
+#' Compares two models (ALTernative and NULL) against each other by maximized likelihood ratio.
+#' Both models are specified by input parameters that are passed to line.models.optimize().
+#' The optimized log likelihoods are computed and logLR of ALT vs. NULL is recorded.
+#' Then a null distribution for logLR is estimated using user-specified number of simulated data sets.
+#' Each data set is simulated to mimick the observed data set (w.r.t sample size, effects, SEs)
+#' and follows the optimized NULL model w.r.t line model parameters and model probabilities.
+#' Then both models (ALT and NULL) are optimized using the simulated data and logLRs are recorded.
+#' The function returns both the observed logLR and the simulated null distribution of logLR,
+#' which can be used for deriving an empirical P-value.
+#'
+#' @param X matrix of effect sizes with two columns (one col per trait)
+#' @param SE matrix of standard errors with two columns (one col per trait)
+#' @param n.sims number of simulated data sets for estimating distribution of logLR
+#' @param par.include.null matrix of TRUE/FALSE values TRUE indicating which parameters
+#' are optimized in the null model. One row per line model and 3 columns corresponding
+#' to 'scales', 'slopes' and 'cors' of the line models undel NULL
+#' @param force.same.scales.null logical; If TRUE, then forces all scale parameters equal in the NULL model
+#' @param init.scales.null vector of initial standard deviations of larger effect of each line model
+#' under the NULL model
+#' @param init.slopes.null vector of initial slopes of each line model
+#' under the NULL model
+#' @param init.cors.null vector of initial correlation parameters of each line model
+#' under the NULL model
+#' @param model.priors.null vector of initial prior probabilities of line models up to a normalization constant
+#' under the NULL model
+#' @param par.include.alt matrix of TRUE/FALSE values TRUE indicating which parameters
+#' are optimized in the ALT model. One row per line model and 3 columns corresponding
+#' to 'scales', 'slopes' and 'cors' of the line models under ALT
+#' @param force.same.scales.alt logical; If TRUE, then forces all scale parameters equal in the ALT model
+#' @param init.scales.alt vector of initial standard deviations of larger effect of each line model
+#' under the ALT model
+#' @param init.slopes.alt vector of initial slopes of each line model
+#' under the ALT model
+#' @param init.cors.alt vector of initial correlation parameters of each line model
+#' under the ALT model
+#' @param model.priors.alt vector of initial prior probabilities of line models up to a normalization constant
+#' under the ALT model
+#' @param r.lkhood correlation between estimators of the two effects
+#' @param tol.loglk tolerance for convergence of optimization in adjacent log-likelihoods
+#' @param tol.par tolerance for convergence of optimization in maximum of absolute values of relative differences
+#' across parameters between adjacent iterations. Can be set negative to determine
+#' the convergence solely by log-likelihood.
+#' @param print.steps numeric;
+#' If 0, no optimization results are printed on screen.
+#' If 1, prints optimization results at start and end of each optimization call.
+#' If >1 prints status after every optimization iteration.
+#' @return list with two components. 'obs.loglr' is the log likelihood ratio for observed data and
+#' 'null.loglr' is vector of 'n.sims' simulated loglr values under the null model.
+#' @examples
+#' simulate.loglr(
+#'    X = linemodels.ex1[,1:2], SE = linemodels.ex1[,3:4],
+#'    n.sims = 2,
+#'    par.include.null = rbind(c(F,F,F), c(F,F,F)),
+#'    init.scales.null = c(0.25, 0.25),
+#'    init.slopes.null = c(0, 1),
+#'    init.cors.null = c(0.995, 0.995),
+#'    par.include.alt = rbind(c(F,F,F), c(F,F,F), c(F,T,F)),
+#'    init.scales.alt = c(0.25, 0.25, 0.25),
+#'    init.slopes.alt = c(0, 1, 0.5),
+#'    init.cors.alt = c(0.995, 0.995, 0.995))
+#' @export
+simulate.loglr <- function(
+    X, SE, n.sims = 100,
+    par.include.null = matrix(TRUE,
+                              nrow = length(init.slopes.null),
+                              ncol = 3),
+    force.same.scales.null = FALSE,
+    init.scales.null, init.slopes.null, init.cors.null,
+    model.priors.null = rep(1,length(init.slopes.null)),
+    par.include.alt = matrix(TRUE,
+                             nrow = length(init.slopes.alt),
+                             ncol = 3),
+    force.same.scales.alt = FALSE,
+    init.scales.alt, init.slopes.alt, init.cors.alt,
+    model.priors.alt = rep(1,length(init.slopes.alt)),
+    r.lkhood = 0,
+    tol.loglk = 1e-3,
+    tol.par = 0,
+    print.steps = 0){
+
+
+  K.null = length(init.slopes.null)
+  if(length(init.scales.null) != K.null) stop("Lengths of init.slopes.null and init.scales.null do not match.")
+  if(length(init.cors.null) != K.null) stop("Lengths of init.slopes.null and init.cors.null do not match.")
+  if(length(model.priors.null) != K.null) stop("Lengths of model.priors.null and init.slopes.null do not match.")
+  if(any(init.cors.null < 0) || any(init.cors.null > 1)) stop("init.cors.null should be in [0,1].")
+  if(any(init.scales.null <= 0)) stop("init.scales.null should be positive.")
+  if(any(model.priors.null <= 0)) stop("'model.priors.null' should be positive.")
+  if(!is.matrix(par.include.null) || nrow(par.include.null) != K.null || ncol(par.include.null) != 3)
+    stop("par.include.null should be a matrix with 1 row and 3 cols per model")
+
+  K.alt = length(init.slopes.alt)
+  if(length(init.scales.alt) != K.alt) stop("Lengths of init.slopes.alt and init.scales.alt do not match.")
+  if(length(init.cors.alt) != K.alt) stop("Lengths of init.slopes.alt and init.cors.alt do not match.")
+  if(length(model.priors.alt) != K.alt) stop("Lengths of model.priors.alt and init.slopes.alt do not match.")
+  if(any(init.cors.alt < 0) || any(init.cors.alt > 1)) stop("init.cors.alt should be in [0,1].")
+  if(any(init.scales.alt <= 0)) stop("init.scales.alt should be positive.")
+  if(any(model.priors.alt <= 0)) stop("'model.priors.alt' should be positive.")
+  if(!is.matrix(par.include.alt) || nrow(par.include.alt) != K.alt || ncol(par.include.alt) != 3)
+    stop("par.include.alt should be a matrix with 1 row and 3 cols per model")
+
+  if(abs(r.lkhood) > 1) stop("Correlation of likelihood, 'r.lkhood', should be in [-1,1].")
+  if(tol.loglk <= 0) stop("Tolerance 'tol.loglk' should be positive.")
+  if(!(print.steps %in% c(0,1,2))) stop("print.steps should be one of values 0, 1 or 2.")
+
+  loglk = matrix(NA, ncol = 2, nrow = n.sims + 1)
+
+  for(ii in 1:(n.sims + 1)){
+    if(ii == 1) {XX = X} #First, compute the log-likelihoods for the observed data.
+    #Later, for simulations ii > 1, use parameters learned from the observed data at iteration ii == 1.
+    else {
+      XX = simulate.linemodels.for.observations(
+        X, SE, post.null,
+        scales = scales.null,
+        slopes = slopes.null,
+        cors = cors.null,
+        r.lkhood = r.lkhood)}
+
+    cat(paste("\nNULL model optimization for data set",ii-1,"\n"))
+    lm.opt.null = line.models.optimize(
+      XX, SE, par.include = par.include.null,
+      force.same.scales = force.same.scales.null,
+      init.scales = init.scales.null,
+      init.slopes = init.slopes.null,
+      init.cors = init.cors.null,
+      model.priors = model.priors.null,
+      return.weights = TRUE,
+      r.lkhood = r.lkhood, tol.loglk = tol.loglk, tol.par = tol.par,
+      print.steps = print.steps)
+
+    loglk.null = line.models.loglkhood(
+      XX, SE,
+      scales = lm.opt.null$parameters[,"scales"],
+      slopes = lm.opt.null$parameters[,"slopes"],
+      cors = lm.opt.null$parameters[,"cors"],
+      model.priors = lm.opt.null$weights,
+      r.lkhood = r.lkhood,
+      return.posteriors = (ii == 1))
+
+    if(ii == 1){ #save values for simulations from the null model to be used in later iterations ii > 1
+      post.null = loglk.null$membership.prob
+      loglk.null = loglk.null$loglkhood
+      scales.null = lm.opt.null$parameters[,"scales"]
+      slopes.null = lm.opt.null$parameters[,"slopes"]
+      cors.null = lm.opt.null$parameters[,"cors"]}
+
+    cat(paste("\nALT model optimization for data set",ii-1,"\n"))
+    lm.opt.alt = line.models.optimize(
+      XX, SE, par.include = par.include.alt,
+      force.same.scales = force.same.scales.alt,
+      init.scales = init.scales.alt,
+      init.slopes = init.slopes.alt,
+      init.cors = init.cors.alt,
+      model.priors = model.priors.alt,
+      return.weights = TRUE,
+      r.lkhood = r.lkhood, tol.loglk = tol.loglk, tol.par = tol.par,
+      print.steps = print.steps)
+
+    loglk.alt = line.models.loglkhood(
+      XX, SE,
+      scales = lm.opt.alt$parameters[,"scales"],
+      slopes = lm.opt.alt$parameters[,"slopes"],
+      cors = lm.opt.alt$parameters[,"cors"],
+      model.priors = lm.opt.alt$weights,
+      r.lkhood = r.lkhood,
+      return.posteriors = FALSE)
+
+    loglk[ii,] = c(loglk.null, loglk.alt)
+  }
+  #Returns list where elements are
+  # 1: observed logLR between alternative and null.
+  # 2: vector of simulated logLR values under the null model.
+  return(
+    list( obs.loglr = loglk[1,2] - loglk[1,1],
+          null.loglr = as.numeric(loglk[2:(n.sims + 1),2] - loglk[2:(n.sims + 1),1])))
+}
