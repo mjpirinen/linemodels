@@ -1,5 +1,10 @@
 linemodels R-package, ChangeLog
 
+v.0.2.1 (07-Aug-2023)
+
+### Fixed
+- A minor bug in the convergence criteria check of the optimization algorithm.
+
 
 v.0.2.0 (15-Jan-2023)
 
