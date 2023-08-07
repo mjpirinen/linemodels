@@ -1,6 +1,6 @@
-# linemodels (0.2.0): An R package to cluster 2-dimensional effects into
+# linemodels (0.2.1): An R package to cluster 2-dimensional effects into
 #  groups defined by linear relationships.
-# DATE: 15-Jan-2023
+# DATE: 7-Aug-2023
 # Copyright (C) 2022-2023, Matti Pirinen
 # Contact: matti.pirinen@helsinki.fi
 # LICENSE:
@@ -1164,7 +1164,7 @@ line.models.optimize <- function(X, SE,
       cat(paste("iter:",iter,"; Failed to increase log-likelihood further.",
                 "(previous:",signif(log.lkhood,8),"new:",signif(new.log.lkhood,8),")\n"))}
 
-    converged.par = all(as.vector(abs((current - prev.vals)/prev.vals)) <= tol.par)
+    converged.par = all(as.vector(abs((current - prev.vals)/prev.vals)[par.include]) <= tol.par)
     converged.loglk = ((log.lkhood - prev.log.lkhood) < tol.loglk)
     converged = converged.par | converged.loglk
   }
