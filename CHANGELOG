@@ -1,14 +1,18 @@
 linemodels R-package, ChangeLog
 
-v.0.3.0 (-Nov-2023)
+v.0.3.0 (20-Nov-2023)
 - Added simulate.loglr( )
 - Added simulate.linemodels.for.observations( )
 - Modified line.models.optimize( )
-  * Added option 'print.all.steps' to disable output from the middle steps
+  * Added option 'print.steps' to control console output from optimization steps
   * Added possibility to optimize only the proportion parameters
 
-v.0.2.1 (Aug-2023)
-- Minor bug fix
+
+v.0.2.1 (07-Aug-2023)
+
+### Fixed
+- A minor bug in the convergence criteria check of the optimization algorithm.
+
 
 v.0.2.0 (15-Jan-2023)
 
