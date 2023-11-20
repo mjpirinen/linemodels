@@ -1,7 +1,7 @@
 Package: linemodels
 Type: Package
 Title: Clustering bivariate effects based on linear relationships 
-Version: 0.2.0
+Version: 0.3.0
 Author: Matti Pirinen
 Maintainer: Matti Pirinen <matti.pirinen@helsinki.fi>
 Description: linemodels provide tools to probabilistically cluster two dimensional effect sizes between models defined by effects' scale, slope of the line around which the effects are scattered, and correlation that determines the amount of deviation from the line. Functions include closed forms computations when all parameters are fixed, a Gibbs sampling when proportion parameters are to be estimated and an EM-algorithm when line parameters are to be estimated.
