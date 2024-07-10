@@ -9,14 +9,14 @@ sample.line.model(n = 1, scale, slope, cor, scale.weights = c(1))
 \arguments{
 \item{n}{the number of samples}
 
-\item{scale}{standard deviation of larger effect}
+\item{scale}{standard deviation of the largest effect}
 
-\item{slope}{slopes of line model}
+\item{slope}{vector of slopes of the linemodel}
 
-\item{cor}{correlation parameters of line model}
+\item{cor}{correlation parameters of the linemodel}
 
-\item{scale.weights}{vector of weights of each component when effect size
-distribution is a mixture model}
+\item{scale.weights}{vector of weights of each component when the effect size
+distribution is a mixture of Gaussians}
 }
 \value{
 matrix with one row per sample and one column per effect on each outcome
@@ -25,6 +25,7 @@ matrix with one row per sample and one column per effect on each outcome
 See help of 'line.models( )' for details about specifying the models.
 }
 \examples{
-sample.line.model(10, scale = 0.1, slope = 1, cor = 0.95)
-sample.line.model(10, scale = 0.1, slope = 1, cor = 0.95, scale.weights = c(1,0,1))
+sample.line.model(10, scale = 0.1, slope = 1, cor = 0.99)
+sample.line.model(10, scale = 0.1, slope = 1, cor = 0.99, scale.weights = c(1,0,1))
+sample.line.model(10, scale = 0.1, slope = c(1,-1), cor = 0.99)
 }

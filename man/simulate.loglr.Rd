@@ -8,83 +8,98 @@
   X,
   SE,
   n.sims = 100,
-  par.include.null = matrix(TRUE, nrow = length(init.slopes.null), ncol = 3),
+  par.include.null = matrix(TRUE, nrow = length(init.scales.null), ncol = 3),
   force.same.scales.null = FALSE,
   init.scales.null,
   init.slopes.null,
   init.cors.null,
-  model.priors.null = rep(1, length(init.slopes.null)),
-  par.include.alt = matrix(TRUE, nrow = length(init.slopes.alt), ncol = 3),
+  model.priors.null = rep(1, length(init.scales.null)),
+  par.include.alt = matrix(TRUE, nrow = length(init.scales.alt), ncol = 3),
   force.same.scales.alt = FALSE,
   init.scales.alt,
   init.slopes.alt,
   init.cors.alt,
-  model.priors.alt = rep(1, length(init.slopes.alt)),
-  r.lkhood = 0,
+  model.priors.alt = rep(1, length(init.scales.alt)),
+  r.lkhood = rep(0, ncol(X) * (ncol(X) - 1)/2),
   tol.loglk = 0.001,
   tol.par = 0,
-  print.steps = 0
+  op.method = "BFGS",
+  assume.constant.SE = FALSE,
+  print.steps = c(1, 0)
 )
 }
 \arguments{
-\item{X}{matrix of effect sizes with two columns (one col per trait)}
+\item{X}{matrix of estimates with M columns (one col per variable and one row per observation)}
 
-\item{SE}{matrix of standard errors with two columns (one col per trait)}
+\item{SE}{matrix of standard errors with M columns (one col per variable and one row per observation)}
 
 \item{n.sims}{number of simulated data sets for estimating distribution of logLR}
 
-\item{par.include.null}{matrix of TRUE/FALSE values TRUE indicating which parameters
-are optimized in the null model. One row per line model and 3 columns corresponding
-to 'scales', 'slopes' and 'cors' of the line models undel NULL}
+\item{par.include.null}{list with three components for the NULL model:
+'scales' K-vector, slopes' Kx(M-1) matrix and 'cors' K-vector,
+where K is the no. of linemodels and M is the dimension of data.
+Each element in scales, slopes and cors is a TRUE/FALSE value
+where TRUE indicates the parameters that are to be optimized.
+Alternatively, can be given as Kx3 matrix, where each row is for one linemodel and
+column 1 is for scales, column 2 for slopes and column 3 for cors.
+ If element (ii,2) is TRUE, then all slope parameters of model 'ii' will
+ be optimized, and if it is FALSE, then none of the slope parameters of model 'ii'
+ will be optimized.}
 
-\item{force.same.scales.null}{logical; If TRUE, then forces all scale parameters equal in the NULL model}
+\item{force.same.scales.null}{logical; If TRUE, then forces all optimized scale parameters equal in the NULL model}
 
-\item{init.scales.null}{vector of initial standard deviations of larger effect of each line model
-under the NULL model}
+\item{init.scales.null}{K-vector of initial standard deviations of the largest effect, one per each linemodel,
+under the NULL}
 
-\item{init.slopes.null}{vector of initial slopes of each line model
-under the NULL model}
+\item{init.slopes.null}{Kx(M-1)-matrix of initial slopes, one row per linemodel, under the NULL
+If M = 2, can be given also as a K-vector of slopes, one per each linemodel}
 
-\item{init.cors.null}{vector of initial correlation parameters of each line model
-under the NULL model}
+\item{init.cors.null}{K-vector of initial correlation parameters, one per each linemodel, under the NULL}
 
-\item{model.priors.null}{vector of initial prior probabilities of line models up to a normalization constant
-under the NULL model}
+\item{model.priors.null}{K-vector of initial prior probabilities of linemodels up to a normalization constant under the NULL}
 
-\item{par.include.alt}{matrix of TRUE/FALSE values TRUE indicating which parameters
-are optimized in the ALT model. One row per line model and 3 columns corresponding
-to 'scales', 'slopes' and 'cors' of the line models under ALT}
+\item{par.include.alt}{analogous to par.include.null but for the ALT model}
 
-\item{force.same.scales.alt}{logical; If TRUE, then forces all scale parameters equal in the ALT model}
+\item{force.same.scales.alt}{analogous to force.same.scales.null but for the ALT model}
 
-\item{init.scales.alt}{vector of initial standard deviations of larger effect of each line model
-under the ALT model}
+\item{init.scales.alt}{analogous to init.scales.null but for the ALT model
+under the ALT}
 
-\item{init.slopes.alt}{vector of initial slopes of each line model
-under the ALT model}
+\item{init.slopes.alt}{analogous to init.slopes.null but for the ALT model
+If M = 2, can be given also as a K-vector of slopes, one per each model}
 
-\item{init.cors.alt}{vector of initial correlation parameters of each line model
-under the ALT model}
+\item{init.cors.alt}{analogous to init.cors.null but for the ALT model}
 
-\item{model.priors.alt}{vector of initial prior probabilities of line models up to a normalization constant
-under the ALT model}
+\item{model.priors.alt}{analogous to model.priors.null but for the ALT model}
 
-\item{r.lkhood}{correlation between estimators of the two effects}
+\item{r.lkhood}{correlation matrix of the estimators of the M effects
+can be given also as a vector of the upper triangular values in the row-major order}
 
-\item{tol.loglk}{tolerance for convergence of optimization in adjacent log-likelihoods}
+\item{tol.loglk}{tolerance for convergence in log-likelihoods of consecutive iterations}
 
-\item{tol.par}{tolerance for convergence of optimization in maximum of absolute values of relative differences
-across parameters between adjacent iterations. Can be set negative to determine
+\item{tol.par}{tolerance for convergence in maximum of absolute values of relative differences
+across parameters between consecutive iterations. Can be set negative to determine
 the convergence solely by log-likelihood.}
 
-\item{print.steps}{numeric;
+\item{op.method}{Optimization method in optim() fuction. By default "BFGS",
+can also be "Nelder-Mead". If one method crashes, try the other.
+Does not affect univariate optimization method that is always "Brent".}
+
+\item{assume.constant.SE}{If TRUE, assumes that SEs of observations in any one dimension is constant across observations.
+SEs of different dimensions can still be different.
+Value TRUE speeds up greatly the computation but ignores possible differences in SEs.
+Default is FALSE.}
+
+\item{print.steps}{vector with 2 elements;
+If print.steps[1] is TRUE, then prints iteration number.
+Value of print.steps[2] is passed to optimization and it must be 0, 1 or 2.
 If 0, no optimization results are printed on screen.
-If 1, prints optimization results at start and end of each optimization call.
+If 1, prints optimization results at start and end of each optimization call (default).
 If >1 prints status after every optimization iteration.}
 }
 \value{
-list with two components. 'obs.loglr' is the log likelihood ratio for observed data and
-'null.loglr' is vector of 'n.sims' simulated loglr values under the null model.
+list with two components. 'obs.loglr' is the log-likelihood ratio for the observed data and
+'null.loglr' is a vector of 'n.sims' simulated loglr values under the NULL model.
 }
 \description{
 See help of 'line.models( )' for details about specifying the models.
@@ -92,17 +107,17 @@ See help of 'line.models( )' for details about specifying the models.
 \details{
 Compares two models (ALTernative and NULL) against each other by maximized likelihood ratio.
 Both models are specified by input parameters that are passed to line.models.optimize().
-The optimized log likelihoods are computed and logLR of ALT vs. NULL is recorded.
+The optimized log-likelihoods are computed and logLR of ALT vs. NULL is recorded.
 Then a null distribution for logLR is estimated using user-specified number of simulated data sets.
-Each data set is simulated to mimick the observed data set (w.r.t sample size, effects, SEs)
-and follows the optimized NULL model w.r.t line model parameters and model probabilities.
+Each data set is simulated to mimic the observed data set (w.r.t sample size, estimates, SEs)
+and follows the optimized NULL model w.r.t the linemodel parameters and mixture weights of the linemodels.
 Then both models (ALT and NULL) are optimized using the simulated data and logLRs are recorded.
-The function returns both the observed logLR and the simulated null distribution of logLR,
+Returns both the observed logLR and the simulated null distribution of logLR,
 which can be used for deriving an empirical P-value.
 }
 \examples{
 simulate.loglr(
-   X = linemodels.ex1[,1:2], SE = linemodels.ex1[,3:4],
+   X = linemodels.ex1[,c("beta1","beta2")], SE = linemodels.ex1[,c("se1","se2")],
    n.sims = 2,
    par.include.null = rbind(c(F,F,F), c(F,F,F)),
    init.scales.null = c(0.25, 0.25),
@@ -112,4 +127,21 @@ simulate.loglr(
    init.scales.alt = c(0.25, 0.25, 0.25),
    init.slopes.alt = c(0, 1, 0.5),
    init.cors.alt = c(0.995, 0.995, 0.995))
+# Same as above but scaling effects and SEs to allow SEs to be treated as constant to speed up
+# Also estimates the scales of all linemodels and forces same scales across linemodels.
+sc = sqrt(2 * linemodels.ex1$maf * (1 - linemodels.ex1$maf))
+simulate.loglr(
+   X = linemodels.ex1[,c("beta1","beta2")]*sc, SE = linemodels.ex1[,c("se1","se2")]*sc,
+   n.sims = 2,
+   par.include.null = rbind(c(T,F,F), c(T,F,F)),
+   init.scales.null = c(0.15, 0.15),
+   init.slopes.null = c(0, 1),
+   init.cors.null = c(0.995, 0.995),
+   force.same.scales.null = TRUE,
+   par.include.alt = rbind(c(T,F,F), c(T,F,F), c(T,T,F)),
+   init.scales.alt = c(0.15, 0.15, 0.15),
+   init.slopes.alt = c(0, 1, 0.5),
+   init.cors.alt = c(0.995, 0.995, 0.995),
+   force.same.scales.alt = TRUE,
+   assume.constant.SE = TRUE)
 }

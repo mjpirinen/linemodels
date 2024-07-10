@@ -2,7 +2,7 @@
 % Please edit documentation in R/linemodels.R
 \name{visualize.line.models}
 \alias{visualize.line.models}
-\title{Visualize line models}
+\title{Visualize linemodels}
 \usage{
 visualize.line.models(
   scales,
@@ -13,8 +13,8 @@ visualize.line.models(
   legend.position = "bottomright",
   xlim = NULL,
   ylim = NULL,
-  xlab = "EFFECT1",
-  ylab = "EFFECT2",
+  xlab = "VARIABLE1",
+  ylab = "VARIABLE2",
   cex.lab = 1,
   cex.axis = 1,
   line.lty = 1,
@@ -27,15 +27,15 @@ visualize.line.models(
 )
 }
 \arguments{
-\item{scales}{vector of standard deviations of larger effect of each model}
+\item{scales}{vector of standard deviations of larger effect of each linemodel}
 
-\item{slopes}{vector of slopes of each model}
+\item{slopes}{vector of slopes of each linemodel}
 
-\item{cors}{vector of correlation parameters of each model}
+\item{cors}{vector of correlation parameters of each linemodel}
 
-\item{model.names}{vector of names of each model}
+\item{model.names}{vector of names of each linemodel}
 
-\item{model.cols}{vector of colors for each model}
+\item{model.cols}{vector of colors for each linemodel}
 
 \item{legend.position}{position of legend, value NULL removes legend}
 
@@ -49,7 +49,7 @@ visualize.line.models(
 
 \item{region.lwd}{width of line for 95\% regions}
 
-\item{plot.grid, }{if TRUE, plots a grid}
+\item{plot.grid}{if TRUE, plots a grid}
 
 \item{plot.new}{if TRUE, makes a new plot, if FALSE adds to existing plot}
 
@@ -59,7 +59,7 @@ visualize.line.models(
 none
 }
 \description{
-Plots lines and 95\% highest probability regions of the models
+Plots lines and 95\% highest probability regions of the 2 dimensional models
 specified by scales, slopes and correlations.
 See help of 'line.models( )' for details about specifying the models.
 }

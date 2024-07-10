@@ -2,7 +2,7 @@
 % Please edit documentation in R/linemodels.R
 \name{line.models.with.proportions}
 \alias{line.models.with.proportions}
-\title{Proportion parameters and membership probabilities of line models}
+\title{Proportion parameters and membership probabilities of linemodels}
 \usage{
 line.models.with.proportions(
   X,
@@ -11,7 +11,7 @@ line.models.with.proportions(
   slopes,
   cors,
   model.names = NULL,
-  r.lkhood = 0,
+  r.lkhood = rep(0, ncol(X) * (ncol(X) - 1)/2),
   n.iter = 200,
   n.burnin = 20,
   diri.prior = rep(1/length(scales), length(scales)),
@@ -19,19 +19,21 @@ line.models.with.proportions(
 )
 }
 \arguments{
-\item{X}{matrix of effect sizes with two columns (one col per trait)}
+\item{X}{matrix of estimates with M columns (one col per variable and one row per observation)}
 
-\item{SE}{matrix of standard errors with two columns (one col per trait)}
+\item{SE}{matrix of standard errors with M columns (one col per variable and one row per observation)}
 
-\item{scales}{vector of standard deviations of larger effect of each model}
+\item{scales}{K-vector of standard deviations of the largest effect, one per each linemodel}
 
-\item{slopes}{vector of slopes of each model}
+\item{slopes}{Kx(M-1)-matrix of slopes, one row per linemodel
+If M = 2, can be given also as a K-vector of slopes, one per each linemodel}
 
-\item{cors}{vector of correlation parameters of each model}
+\item{cors}{K-vector of correlation parameters, one per each linemodel}
 
-\item{model.names}{vector of names of each model}
+\item{model.names}{K-vector of names of linemodels}
 
-\item{r.lkhood}{correlation between estimators of the two effects}
+\item{r.lkhood}{correlation matrix of the estimators of the M effects
+can be given also as a vector of the upper triangular values in the row-major order}
 
 \item{n.iter}{number of Gibbs sampler iterations (after burn-in)}
 
@@ -43,47 +45,68 @@ line.models.with.proportions(
 }
 \value{
 List with two components: (1) 'params', matrix of
-posterior distribution of proportion parameters for each model.
+posterior distribution of proportion parameters for each linemodel.
 Columns are mean, lower and upper points of 95\% credible interval
-and standard deviation. (2)  'groups',
-matrix with one column per model and one row per variable giving
-membership probabilities of each variable in each model.
+and standard deviation.
+(2)  'groups', matrix with one column per linemodel and one row per observation giving
+membership probabilities of each observation in each model.
 }
 \description{
-Consider two effects:  x = effect1 and y = effect2.
-The line models are defined by three parameters:
-scale = standard deviation of the (larger) effect,
-slope = slope of line around which the effects are scattered,
-cor = non-negative correlation between effects,
+Consider M effect sizes.
+The linemodels are defined by three parameters:
+scale = standard deviation of the (largest) effect,
+slope = set of M-1 slopes defining the line around which the effects are scattered,
+cor = non-negative pairwise correlation between each effect pair,
 where cor = 1 means the same effect and cor = 0 means independent effects.
 }
 \details{
-A line model has the following properties:
+A linemodel has the following properties:
 
-1) effects are scattered around line y = slope*x.
-   'slope' can be any real number or Inf (in which case effect x is zero).
+1) Effects are scattered around line defined by vector (1,slope_1,...,slope_(M-1)).
+   Each slope_i is the slope between variable i+1 and variable 1.
+   Slope can be any real number or +/-Inf.
+   If any slope is infinite, the effect of variable 1 and variables with finite slopes are 0.
+   It is recommended to keep the slopes finite to avoid problems with interpretation.
 
-2) the larger of the prior variances of effects is scale^2.
-   That is, if |slope| <= 1, then Var(x) = scale^2 and
-            if |slope| > 1, then Var(y) = scale^2.
+2) The largest of the prior variances of the effects is scale^2.
+   The variable that has the largest scale is determined by the slopes,
+   and the scales of the remaining effects are determined by the slopes as well.
 
 3) Distribution around the line is determined as follows.
-   Consider a distribution scattered around line y = x with the given correlation.
-   Rotate that distribution by an orthogonal rotation defined by angle
-   theta = atan(slope) - pi/4
+   Consider a distribution scattered around the direction of the vector (1,1,...,1)
+   with the given constant value of the pairwise correlations between the variables.
+   Rotate that distribution by an orthogonal rotation that rotates the direction of the
+   vector (1,1,...,1) to the direction of the vector (1,slope_1,...,slope_(M-1))
    and use the corresponding distribution, scaled so that the maximum variance
-   of the two effects is scale^2.
-   NOTE: This is not same as having the given correlation around line y = slope*x,
-         because the shape of that distribution depends on the slope but
-         definition we use here is independent of slope (up to an orthogonal transformation).
+   among the effects is set to scale^2.
+   NOTE: This is not same as having the given correlation around line defined by the slopes,
+         because the shape of that distribution depends on the slopes but the
+        definition we use here is independent of slopes up to an orthogonal transformation.
+
+Examples:
+Set scale = 0 to get the null model. (Values of slope and cor do not matter in this case.)
+Use scale > 0, slope = 1 and cor = 0 to get independent effects model for 2-dim case.
+Use scale > 0, slope = c(1,1,1) and cor = 1 to get fixed effects model for 4-dim case.
+Use scale > 0, slope = 1 and 0 < cor < 1  to get correlated effects model for 2-dim case.
+              note that cor value needs to be quite near 1 to get very similar values
+              between the two effects with high probability (e.g. cor = 0.99...0.999).
+
 
 The prior distribution of the mixture proportions is Dirichlet(diri.prior) and
 a Gibbs sampler is used for estimating the posterior.
 }
 \examples{
+#2D example
 line.models.with.proportions(
-           X = linemodels.ex1[,1:2], SE = linemodels.ex1[,3:4],
+           X = linemodels.ex1[,c("beta1","beta2")], SE = linemodels.ex1[,c("se1","se2")],
            scales = c(0.2, 0.2, 0.2),
            slopes = c(0, 0.5, 1),
+           cors = c(0.995, 0.995, 0.995))
+#3D example
+line.models.with.proportions(
+           X = linemodels.ex1[,c("beta1","beta2","beta3")],
+           SE = linemodels.ex1[,c("se1","se2","se3")],
+           scales = c(0.2, 0.2, 0.2),
+           slopes = matrix(c(0,0, 0.5,0, 1,1), byrow = TRUE, ncol = 2),
            cors = c(0.995, 0.995, 0.995))
 }

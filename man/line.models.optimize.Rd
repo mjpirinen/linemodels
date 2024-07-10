@@ -7,51 +7,67 @@
 line.models.optimize(
   X,
   SE,
-  par.include = matrix(TRUE, nrow = length(init.slopes), ncol = 3),
+  par.include = NULL,
   force.same.scales = FALSE,
   init.scales,
   init.slopes,
   init.cors,
-  model.priors = rep(1, length(init.slopes)),
   model.names = NULL,
-  r.lkhood = 0,
+  model.priors = rep(1, length(init.scales)),
+  r.lkhood = rep(0, ncol(X) * (ncol(X) - 1)/2),
   tol.loglk = 0.001,
   tol.par = 0,
-  return.weights = FALSE,
+  op.method = "BFGS",
+  assume.constant.SE = FALSE,
   print.steps = 1
 )
 }
 \arguments{
-\item{X}{matrix of effect sizes with two columns (one col per trait)}
+\item{X}{matrix of estimates with M columns (one col per variable and one row per observation)}
 
-\item{SE}{matrix of standard errors with two columns (one col per trait)}
+\item{SE}{matrix of standard errors with M columns (one col per variable and one row per observation)}
 
-\item{par.include}{matrix of TRUE/FALSE values TRUE indicating which parameters
-are optimized. One row per model and 3 columns corresponding
-to 'scales', 'slopes' and 'cors', respectively.}
+\item{par.include}{list with three components:
+'scales' K-vector, slopes' Kx(M-1) matrix and 'cors' K-vector,
+where K is the no. of linemodels and M is the dimension of data.
+Each element in scales, slopes and cors is a TRUE/FALSE value
+where TRUE indicates the parameters that are to be optimized.
+Alternatively, can be given as Kx3 matrix, where each row is for one linemodel and
+column 1 is for scales, column 2 for slopes and column 3 for cors.
+ If element (ii,2) is TRUE, then all slope parameters of model 'ii' will
+ be optimized, and if it is FALSE, then none of the slope parameters of model 'ii'
+ will be optimized.}
 
-\item{force.same.scales}{logical; If TRUE, then forces all scale parameters equal}
+\item{force.same.scales}{logical; If TRUE, then forces all optimized scale parameters equal}
 
-\item{init.scales}{vector of initial standard deviations of larger effect of each model}
+\item{init.scales}{K-vector of initial scale parameters, one per each linemodel}
 
-\item{init.slopes}{vector of initial slopes of each model}
+\item{init.slopes}{Kx(M-1)-matrix of initial slopes, one row per linemodel
+If M = 2, can be given also as a K-vector of slopes, one per each linemodel}
 
-\item{init.cors}{vector of initial correlation parameters of each model}
+\item{init.cors}{K-vector of initial correlation parameters, one per each linemodel}
 
-\item{model.priors}{vector of initial prior probabilities of models up to a normalization constant}
+\item{model.names}{K-vector of names of linemodels}
 
-\item{model.names}{vector of names of each model}
+\item{model.priors}{K-vector of prior probabilities of linemodels up to a normalization constant}
 
-\item{r.lkhood}{correlation between estimators of the two effects}
+\item{r.lkhood}{correlation matrix of the estimators of the M effects
+can be given also as a vector of the upper triangular values in the row-major order}
 
-\item{tol.loglk}{tolerance for convergence in adjacent log-likelihoods}
+\item{tol.loglk}{tolerance for convergence in log-likelihoods of consecutive iterations}
 
 \item{tol.par}{tolerance for convergence in maximum of absolute values of relative differences
-across parameters between adjacent iterations. Can be set negative to determine
+across parameters between consecutive iterations. Can be set negative to determine
 the convergence solely by log-likelihood.}
 
-\item{return.weights}{logical; If TRUE returns both optimized mixture weights and
-optimized parameters. If FALSE returns only optimized parameters.}
+\item{op.method}{Optimization method in optim() fuction. By default "BFGS",
+can also be "Nelder-Mead". If one method crashes, try the other.
+Does not affect univariate optimization method that is always "Brent".}
+
+\item{assume.constant.SE}{If TRUE, assumes that SEs of observations in any one dimension is constant across observations.
+SEs of different dimensions can still be different.
+Value TRUE speeds up greatly the computation but ignores possible differences in SEs.
+Default is FALSE.}
 
 \item{print.steps}{numeric;
 If 0, no optimization results are printed on screen.
@@ -59,49 +75,79 @@ If 1, prints optimization results at start and end of each optimization call (de
 If >1 prints status after every optimization iteration.}
 }
 \value{
-If 'return.weights' = FALSE, returns matrix with models in rows and columns:
-(1) scales, (2) slopes, (3) correlations.
-If 'return.weights = TRUE, then returns a list with two components
+A list with four components
+scales, K-vector for scale parameters of linemodels 1,...,K
+slopes, Kx(M-1) matrix for slopes where each linemodel is specified by one row
+cors, K-vector for correlation parameters of models 1,...,K
+weights, giving the mixture weights of the linemodels
 }
 \description{
-Consider two effects:  x = effect1 and y = effect2.
-The line models are defined by three parameters:
-scale = standard deviation of the (larger) effect,
-slope = slope of line around which the effects are scattered,
-cor = non-negative correlation between effects,
+Consider M effect sizes.
+The linemodels are defined by three parameters:
+scale = standard deviation of the (largest) effect,
+slope = set of M-1 slopes defining the line around which the effects are scattered,
+cor = non-negative pairwise correlation between each effect pair,
 where cor = 1 means the same effect and cor = 0 means independent effects.
 }
 \details{
-A line model has the following properties:
+A linemodel has the following properties:
 
-1) effects are scattered around line y = slope*x.
-   'slope' can be any real number or Inf (in which case effect x is zero).
+1) Effects are scattered around line defined by vector (1,slope_1,...,slope_(M-1)).
+   Each slope_i is the slope between variable i+1 and variable 1.
+   Slope can be any real number or +/-Inf.
+   If any slope is infinite, the effect of variable 1 and variables with finite slopes are 0.
+   It is recommended to keep the slopes finite to avoid problems with interpretation.
 
-2) the larger of the prior variances of effects is scale^2.
-   That is, if |slope| <= 1, then Var(x) = scale^2 and
-            if |slope| > 1, then Var(y) = scale^2.
+2) The largest of the prior variances of the effects is scale^2.
+   The variable that has the largest scale is determined by the slopes,
+   and the scales of the remaining effects are determined by the slopes as well.
 
 3) Distribution around the line is determined as follows.
-   Consider a distribution scattered around line y = x with the given correlation.
-   Rotate that distribution by an orthogonal rotation defined by angle
-   theta = atan(slope) - pi/4
+   Consider a distribution scattered around the direction of the vector (1,1,...,1)
+   with the given constant value of the pairwise correlations between the variables.
+   Rotate that distribution by an orthogonal rotation that rotates the direction of the
+   vector (1,1,...,1) to the direction of the vector (1,slope_1,...,slope_(M-1))
    and use the corresponding distribution, scaled so that the maximum variance
-   of the two effects is scale^2.
-   NOTE: This is not same as having the given correlation around line y = slope*x,
-         because the shape of that distribution depends on the slope but
-         definition we use here is independent of slope (up to an orthogonal transformation).
+   among the effects is set to scale^2.
+   NOTE: This is not same as having the given correlation around line defined by the slopes,
+         because the shape of that distribution depends on the slopes but the
+        definition we use here is independent of slopes up to an orthogonal transformation.
 
 This function optimizes over any set of scales, slopes and cors.
-The parameters not included in optimization are fixed to their initial values.
-Proportion parameters are always optimized.
+The parameters not included in optimization are kept fixed to their initial values.
+The proportion parameters are always optimized.
 }
 \examples{
+#2D example optimizing slope and cor of 2nd model (w/o assuming constant SEs)
 line.models.optimize(
-     X = linemodels.ex1[,1:2],
-     SE = linemodels.ex1[,3:4],
+     X = linemodels.ex1[,c("beta1","beta2")],
+     SE = linemodels.ex1[,c("se1","se2")],
      par.include = rbind(c(F,F,F), c(F,T,T), c(F,F,F)),
      force.same.scales = FALSE,
      init.scales = c(0.2, 0.2, 0.2),
      init.slopes = c(0, 0.2, 1),
      init.cors = c(0.995, 0.5, 0.995))
+#2D example assuming constant SEs after scaling the effects by minor allele frequencies
+# and optimizing scales that are assumed same across the linemodels
+# and slope and cor of the 2nd model as above.
+sc = sqrt(2 * linemodels.ex1$maf * (1 - linemodels.ex1$maf))
+line.models.optimize(
+     X = linemodels.ex1[,c("beta1","beta2")]*sc,
+     SE = linemodels.ex1[,c("se1","se2")]*sc,
+     par.include = rbind(c(T,F,F), c(T,T,T), c(T,F,F)),
+     force.same.scales = TRUE,
+     init.scales = c(0.2, 0.2, 0.2),
+     init.slopes = c(0, 0.2, 1),
+     init.cors = c(0.995, 0.5, 0.995),
+     assume.constant.SE = TRUE)
+#3D example optimizing all slopes (you can also scale X and SEs and assume constant SE as above to speed up)
+line.models.optimize(
+     X = linemodels.ex1[,c("beta1","beta2","beta3")],
+     SE = linemodels.ex1[,c("se1","se2","se3")],
+     par.include = list(scales = c(F,F,F), slopes = matrix(TRUE, ncol = 2, nrow = 3), cors = c(F,F,F)),
+     force.same.scales = FALSE,
+     init.scales = c(0.2, 0.2, 0.2),
+     init.slopes = rbind(c(0, 0), c(0.2, 0), c(0.5, 1)),
+     init.cors = c(0.995, 0.995, 0.995),
+     assume.constant.SE = FALSE)
 }

@@ -2,52 +2,68 @@
 % Please edit documentation in R/linemodels.R
 \name{simulate.linemodels.for.observations}
 \alias{simulate.linemodels.for.observations}
-\title{Simulate a data set from the observed data and given set of line models}
+\title{Simulate a data set mimicking the observed multi-dimensional data given a set of linemodels}
 \usage{
-\method{simulate}{linemodels.for.observations}(X, SE, linemodels.results = NULL, scales, slopes, cors, r.lkhood = 0)
+\method{simulate}{linemodels.for.observations}(
+  X,
+  SE,
+  linemodel.prob = NULL,
+  scales,
+  slopes,
+  cors,
+  r.lkhood = rep(0, ncol(X) * (ncol(X) - 1)/2)
+)
 }
 \arguments{
-\item{X}{matrix of effect sizes with two columns (one col per trait)}
+\item{X}{matrix of estimates with M columns (one col per variable and one row per observation)}
 
-\item{SE}{matrix of standard errors with two columns (one col per trait)}
+\item{SE}{matrix of standard errors with M columns (one col per variable and one row per observation)}
 
-\item{scales}{vector of standard deviations of larger effect of each model}
+\item{linemodel.prob}{matrix of probabilities of each observation (row) in each model (col) up to a normalization constant}
 
-\item{slopes}{vector of slopes of each model}
+\item{scales}{K-vector of standard deviations of the largest effect, one per each linemodel}
 
-\item{cors}{vector of correlation parameters of each model}
+\item{slopes}{Kx(M-1)-matrix of slopes, one row per linemodel
+If M = 2, can be given also as a K-vector of slopes, one per each linemodel}
 
-\item{r.lkhood}{correlation between estimators of the two effects}
+\item{cors}{K-vector of correlation parameters, one per each linemodel}
 
-\item{model.priors}{vector of prior probabilities of models up to a normalization constant}
+\item{r.lkhood}{correlation matrix of the estimators of the M effects
+can be given also as a vector of the upper triangular values in the row-major order}
 }
 \value{
-matrix of simulated effect sizes with one column per trait and one row per observation in X
+matrix of simulated observations with one column per variable and one row per observation in X
 }
 \description{
 See help of 'line.models( )' for details about specifying the models.
 }
 \details{
-Generates effect estimates for each observed data point as follows.
-Pick up an underlying line model based on the given probabilities (default is uniform probabilities).
-Choose the primary coordinate to be x if the slope of the chosen model is in [-1,1],
-otherwise choose y as the primary coordinate.
+Generates M-dimensional estimates for each observed data point as follows.
+Pick up an underlying linemodel based on the given probabilities (default uniform probabilities).
+Choose the primary coordinate to be the one with the largest expected magnitude based on the slopes.
 For the primary coordinate, choose the true effect size from the univariate posterior
-distribution given the observed estimate, its SE and the prior N(0, scale),
-where 'scale' is the scale parameter of the corresponding line model.
+ distribution given the observed univariate estimate, its SE and the prior N(0, scale),
+ where 'scale' is the scale parameter of the corresponding linemodel.
 Project the point on the line based on the primary coordinate.
-Rotate the point to be on the diagonal line y=x.
-Pick uniformly at random one coordinate to be perturbed and
- sample the true effect of the chosen coordinate from the line model, conditional
- on the current value of the other coordinate.
+Rotate the point to be on the diagonal line.
+Pick uniformly at random one coordinate to be kept fixed,
+ sample the true effect of the remaining M-1 coordinates from the linemodel,
+ conditional on the current value of the fixed coordinate.
 Rotate the perturbed point back to correspond to the original slope.
-Finally, sample the observed effects from a bivariate Gaussian around the true values
+Finally, sample the observed effect estimates from a Gaussian around the true values
 by accounting for SEs and r.lkhood.
 }
 \examples{
+#2D example
 simulate.linemodels.for.observations(
-   X = linemodels.ex1[,1:2], SE = linemodels.ex1[,3:4],
+   X = linemodels.ex1[,c("beta1","beta2")], SE = linemodels.ex1[,c("se1","se2")],
    scales = c(0.25, 0.25),
    slopes = c(0, 1),
    cors = c(0.995, 0.995))
+#3D example
+simulate.linemodels.for.observations(
+   X = linemodels.ex1[,c("beta1","beta2","beta3")], SE = linemodels.ex1[,c("se1","se2","se3")],
+   scales = c(0.25, 0.25),
+   slopes = rbind(c(0, 0), c(1,1)),
+   cors = c(0.995, 0.95))
 }

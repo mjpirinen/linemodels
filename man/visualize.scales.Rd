@@ -13,14 +13,14 @@ visualize.scales(
 )
 }
 \arguments{
-\item{scales}{vector of standard deviations of larger effect of each model}
+\item{scales}{vector of standard deviations of larger effect of each linemodel}
 
 \item{scale.weights}{vector of weights of each component or a matrix
-with one row per model and one column per component}
+with one row per linemodel and one column per component}
 
-\item{model.names}{vector of names of each model}
+\item{model.names}{vector of names of each linemodel}
 
-\item{model.cols}{vector of colors for each model}
+\item{model.cols}{vector of colors for each linemodel}
 
 \item{legend.position}{position of legend, value NULL removes legend}
 }

@@ -9,3 +9,7 @@ export(sample.line.model)
 export(visualize.classification.regions)
 export(visualize.line.models)
 export(visualize.scales)
+export(visualize.multidimensional.line.models)
+export(slope.for.pair)
+export(beta.cor.case.control)
+

@@ -2,7 +2,7 @@
 % Please edit documentation in R/linemodels.R
 \name{visualize.classification.regions}
 \alias{visualize.classification.regions}
-\title{Visualize classification regions of line models}
+\title{Visualize classification regions of 2-dimensional line models}
 \usage{
 visualize.classification.regions(
   scales,
@@ -16,8 +16,8 @@ visualize.classification.regions(
   xlim = NULL,
   ylim = NULL,
   breakpoints = 200,
-  xlab = "EFFECT1",
-  ylab = "EFFECT2",
+  xlab = "VARIABLE1",
+  ylab = "VARIABLE2",
   cex.lab = 1,
   cex.axis = 1,
   line.lty = 1,
@@ -28,17 +28,17 @@ visualize.classification.regions(
 )
 }
 \arguments{
-\item{scales}{vector of standard deviations of larger effect of each model}
+\item{scales}{vector of standard deviations of larger effect of linemodels}
 
-\item{slopes}{vector of slopes of each model}
+\item{slopes}{vector of slopes of linemodels}
 
-\item{cors}{vector of correlation parameters of each model}
+\item{cors}{vector of correlation parameters of linemodels}
 
-\item{SE}{vector of two standard errors for effect1 and effect2, respectively}
+\item{SE}{vector of two standard errors for variable1 and variable2, respectively}
 
-\item{r.lkhood}{correlation between estimators of the two effects}
+\item{r.lkhood}{correlation between estimators of the two values}
 
-\item{model.priors}{vector of (unnormalized) prior probabilities of the two models}
+\item{model.priors}{vector of (unnormalized) prior probabilities of the two linemodels}
 
 \item{col.palette}{vector of seven colors (with reasonable defaults)}
 
