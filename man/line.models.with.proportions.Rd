@@ -19,9 +19,9 @@ line.models.with.proportions(
 )
 }
 \arguments{
-\item{X}{matrix of estimates with M columns (one col per variable and one row per observation)}
+\item{X}{matrix of estimates with M columns (one col per effect variable and one row per observation)}
 
-\item{SE}{matrix of standard errors with M columns (one col per variable and one row per observation)}
+\item{SE}{matrix of standard errors with M columns (one col per effect variable and one row per observation)}
 
 \item{scales}{K-vector of standard deviations of the largest effect, one per each linemodel}
 
@@ -63,18 +63,18 @@ where cor = 1 means the same effect and cor = 0 means independent effects.
 A linemodel has the following properties:
 
 1) Effects are scattered around line defined by vector (1,slope_1,...,slope_(M-1)).
-   Each slope_i is the slope between variable i+1 and variable 1.
+   Each slope_i is the slope between effect variables i+1 and 1.
    Slope can be any real number or +/-Inf.
    If any slope is infinite, the effect of variable 1 and variables with finite slopes are 0.
    It is recommended to keep the slopes finite to avoid problems with interpretation.
 
 2) The largest of the prior variances of the effects is scale^2.
-   The variable that has the largest scale is determined by the slopes,
+   The effect that has the largest scale is determined by the slopes,
    and the scales of the remaining effects are determined by the slopes as well.
 
 3) Distribution around the line is determined as follows.
    Consider a distribution scattered around the direction of the vector (1,1,...,1)
-   with the given constant value of the pairwise correlations between the variables.
+   with the given constant value of the pairwise correlations between the effect variables.
    Rotate that distribution by an orthogonal rotation that rotates the direction of the
    vector (1,1,...,1) to the direction of the vector (1,slope_1,...,slope_(M-1))
    and use the corresponding distribution, scaled so that the maximum variance

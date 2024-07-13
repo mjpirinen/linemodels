@@ -27,23 +27,23 @@
 # A line model has the following properties:
 #
 # 1) Effects are scattered around line defined by vector (1,slope_1,...,slope_(M-1)).
-#    Each slope_i is the slope between variable i+1 and variable 1.
+#    Each slope_i is the slope between effect variables i+1 and 1.
 #    Slope can be any real number or +/-Inf.
-#    If any slope is infinite, the effect of variable 1 and variables with finite slopes are 0.
+#    If any slope is infinite, the effect 1 and effects with finite slopes are 0.
 #    It is recommended to keep the slopes finite to avoid problems with interpretation.
 #
 # 2) The largest of the prior variances of the effects is scale^2.
-#    The variable that has the largest scale is determined by the slopes,
+#    The effect that has the largest scale is determined by the slopes,
 #    and the scales of the remaining effects are determined by the slopes as well.
 #
 # 3) Distribution around the line is determined as follows.
 #    Consider a distribution scattered around the direction of the vector (1,1,...,1)
-#    with the given constant value of the pairwise correlations between the variables.
+#    with the given constant value of the pairwise correlations between the effects.
 #    Rotate that distribution by an orthogonal rotation that rotates the direction of the
 #    vector (1,1,...,1) to the direction of the vector (1,slope_1,...,slope_(M-1))
 #    and use the corresponding distribution, scaled so that the maximum variance
 #    among the effects is set to scale^2.
-#    NOTE: This is not same as having the given correlation around line defined by the slopes,
+#    NOTE: This is not same as having the given correlation around the line defined by the slopes,
 #          because the shape of that distribution depends on the slopes but the
 #          definition we use here is independent of slopes up to an orthogonal transformation.
 #
@@ -65,14 +65,14 @@
 # -- To compute correlation in effect estimators of two case-control studies
 
 # slope.for.pair(ii, jj, slopes)
-# -- To extract the slopes for a given pair of variables from the slopes matrix
+# -- To extract the slopes for a given pair of effects from the slopes matrix
 
 # visualize.line.models(
 #   scales, slopes, cors,
 #   model.names = NULL, model.cols = NULL,
 #   legend.position = "bottomright",
 #   xlim = NULL, ylim = NULL,
-#   xlab = "VARIABLE1", ylab = "VARIABLE2",
+#   xlab = "EFFECT1", ylab = "EFFECT2",
 #   cex.lab = 1, cex.axis = 1,
 #   line.lty = 1, region.lty = 2,
 #   line.lwd = 1, region.lwd = 1,
@@ -107,7 +107,7 @@
 #   add.legend = TRUE,
 #   xlim = NULL, ylim = NULL,
 #   breakpoints = 200,
-#   xlab = "VARIABLE1", ylab = "VARIABLE2",
+#   xlab = "EFFECT1", ylab = "EFFECT2",
 #   cex.lab = 1, cex.axis = 1,
 #   line.lty = 1, region.lty = 2,
 #   line.lwd = 1, region.lwd = 1,
@@ -231,7 +231,7 @@ prior.V <- function(scale = 0, slopes = 1, cor = 0){
  # INPUT
  # scale > 0
  # slopes, vector with elements in [-Inf,Inf]
- #        element 'i' is the slope between variable 'i+1' and 1
+ #        element 'i' is the slope between effect variables 'i+1' and 1
  #        While +/-Inf allowed, better to use finite values if there is more than 1 slope.
  # cor >= 0, NOTE: negatively correlated effects are modeled by a negative slope,
  #                 not by a negative correlation
@@ -263,7 +263,7 @@ rdirichlet <- function(alpha){
 }
 
 
-#' @export
+
 log.dmvnorm <- function(x, mu = NULL, S = NULL ){
 
   # Returns log of density of MV-Normal(mean = mu, var = S) at x
@@ -378,13 +378,13 @@ beta.cor.case.control <- function(s1, r1, s2 ,r2, s1s2 = 0, r1r2 = 0, s1r2 = 0, 
 
 
 
-#' Returns slopes between two variables ii and jj,
+#' Returns slopes between two effects ii and jj,
 #' that is, the slopes 'b' of the line x_ii = b*x_jj
 #'
 #' @param ii index of "y-axis" variable
 #' @param jj index of "x-axis" variable
 #' @param slopes matrix of size Kx(M-1), where column 'i' gives the
-#' slopes between variable 'i+1' and variable 1 or a vector of length M-1
+#' slopes between effects 'i+1' and 1 or a vector of length M-1
 #' M is the number of dimensions
 #' K is the number of linemodels
 #' @return slopes for the pair specified for all K models
@@ -402,7 +402,11 @@ slope.for.pair <- function(ii, jj, slopes){
   if(jj < 1 || jj > M) stop("slope.for.pair: 2nd index not in [1,length(slopes)+1]")
   if(ii == 1) {sl.ii = rep(1,K)} else {sl.ii = slopes[,ii-1]}
   if(jj == 1) {sl.jj = rep(1,K)} else {sl.jj = slopes[,jj-1]}
-  return(sl.ii/sl.jj)
+  sl = sl.ii/sl.jj
+  sl[abs(sl.ii) < 1e-10 & abs(sl.jj) < 1e-10] = 0
+  ind = is.infinite(sl.ii) & is.infinite(sl.jj)
+  sl[ind] = sign(sl.ii[ind])*sign(sl.jj[ind])
+  return(sl)
 }
 
 
@@ -437,7 +441,7 @@ visualize.line.models <- function(scales, slopes, cors,
                                   model.names = NULL, model.cols = NULL,
                                   legend.position = "bottomright",
                                   xlim = NULL, ylim = NULL,
-                                  xlab = "VARIABLE1", ylab = "VARIABLE2",
+                                  xlab = "EFFECT1", ylab = "EFFECT2",
                                   cex.lab = 1, cex.axis = 1,
                                   line.lty = 1, region.lty = 2,
                                   line.lwd = 1, region.lwd = 1,
@@ -457,7 +461,7 @@ visualize.line.models <- function(scales, slopes, cors,
          cex.lab = cex.lab, cex.axis = cex.axis)}
   if(is.null(model.names)) model.names = paste0("M",1:K)
   if(is.null(model.cols)) model.cols = 1:K
-  slopes[is.nan(slopes)] = 0 #NaN is when 2 slopes are 0 w.r.t third variable
+  slopes[is.nan(slopes)] = 0 #NaN is when 2 slopes are 0 w.r.t third effect
   prob.level = 0.95
   b = qchisq(prob.level, df = 2)
   if(plot.grid) grid()
@@ -502,14 +506,14 @@ visualize.line.models <- function(scales, slopes, cors,
 #' @param scales vector of standard deviations of larger effect of each model
 #' @param slopes matrix of slopes of the models (one row per model)
 #' @param cors vector of correlation parameters of each model
-#' @param plot.pairs matrix of pairs of variables to be plotted (2 cols and 1 row per pair),
-#' @param var.names names used as axis labels for the variables,
+#' @param plot.pairs matrix of pairs of effect variables to be plotted (2 cols and 1 row per pair)
+#' @param var.names names used as axis labels for the effect variables
 #' @param model.names vector of names of each linemodel
 #' @param model.cols vector of colors for each linemodel
 #' @param legend.position position of legend, value NULL removes legend
-#' @param X points to be plotted, 1 col per variable, if NULL no points plotted
-#' @param SE standard errors to be plotted around points, 1 col per variable, if NULL no SEs plotted
-#' @param SE.mult multiplier of SE to be plotted around each point, default 1.96 i.e. 95% conf. intervals
+#' @param X points to be plotted, 1 col per effect variable, if NULL no points plotted
+#' @param SE standard errors to be plotted around points, 1 col per effect, if NULL no SEs plotted
+#' @param SE.mult multiplier of SE to be plotted around each point, default 1.96 i.e. 95\% conf. intervals
 #' @param model.prob matrix of probability of each observation (row) in each model (col), can be NULL
 #' @param model.thresh threshold probability to color a point by model.cols, default = 0.8
 #' @param undetermined.col color for points where no model.prob is > model.thresh
@@ -550,7 +554,7 @@ visualize.multidimensional.line.models <- function(scales, slopes, cors,
   if(ncol(plot.pairs) != 2) stop("plot.pairs should have 2 columns")
   if(any(as.numeric(plot.pairs) < 1) || any(as.numeric(plot.pairs) > M))
     stop("Values in plot.pairs should be between 1 and M, dimension of data.")
-  if(is.null(var.names)) var.names = paste0("VARIABLE",1:M)
+  if(is.null(var.names)) var.names = paste0("EFFECT",1:M)
   if(length(var.names) != M) stop("Length of var.names should equal to ncol(slopes) + 1")
 
   if(!is.null(X)){
@@ -608,7 +612,7 @@ visualize.multidimensional.line.models <- function(scales, slopes, cors,
 #' @param scales vector of standard deviations of larger effect of linemodels
 #' @param slopes vector of slopes of linemodels
 #' @param cors vector of correlation parameters of linemodels
-#' @param SE vector of two standard errors for variable1 and variable2, respectively
+#' @param SE vector of two standard errors for effect1 and effect2, respectively
 #' @param r.lkhood correlation between estimators of the two values
 #' @param model.priors vector of (unnormalized) prior probabilities of the two linemodels
 #' @param col.palette vector of seven colors (with reasonable defaults)
@@ -634,7 +638,7 @@ visualize.classification.regions <-
            add.legend = TRUE,
            xlim = NULL, ylim = NULL,
            breakpoints = 200,
-           xlab = "VARIABLE1", ylab = "VARIABLE2",
+           xlab = "EFFECT1", ylab = "EFFECT2",
            cex.lab = 1, cex.axis = 1,
            line.lty = 1, region.lty = 2,
            line.lwd = 1, region.lwd = 1,
@@ -805,13 +809,13 @@ visualize.scales <- function(scales, scale.weights = c(1),
 #' A linemodel has the following properties:
 #'
 #' 1) Effects are scattered around line defined by vector (1,slope_1,...,slope_(M-1)).
-#'    Each slope_i is the slope between variable i+1 and variable 1.
+#'    Each slope_i is the slope between effect variables i+1 and 1.
 #'    Slope can be any real number or +/-Inf.
 #'    If any slope is infinite, the effect of variable 1 and variables with finite slopes are 0.
 #'    It is recommended to keep the slopes finite to avoid problems with interpretation.
 #'
 #' 2) The largest of the prior variances of the effects is scale^2.
-#'    The variable that has the largest scale is determined by the slopes,
+#'    The effect that has the largest scale is determined by the slopes,
 #'    and the scales of the remaining effects are determined by the slopes as well.
 #'
 #' 3) Distribution around the line is determined as follows.
@@ -843,8 +847,8 @@ visualize.scales <- function(scales, scale.weights = c(1),
 #' then model 'Mo' is a mixture of 'C' Gaussians specified by row 'Mo'
 #' of 'scale.weights'.
 #'
-#' @param X matrix of estimates with M columns (one col per variable and one row per observation)
-#' @param SE matrix of standard errors with M columns (one col per variable and one row per observation)
+#' @param X matrix of estimates with M columns (one col per effect variable and one row per observation)
+#' @param SE matrix of standard errors with M columns (one col per effect variable and one row per observation)
 #' @param scales K-vector of standard deviations of the largest effect, one per each linemodel
 #' @param slopes Kx(M-1)-matrix of slopes, one row per linemodel
 #'  If M = 2, can be given also as a K-vector of slopes, one per each linemodel
@@ -879,14 +883,14 @@ line.models <- function(X, SE,
 
   # Evaluates model probabilities for each data point separately.
   # INPUT
-  # X, N x M matrix where rows are observations/variables
+  # X, N x M matrix where rows are observations/effect variables
   #  and columns are the observed effect sizes.
-  # SE, N x M matrix where rows are observations/variables
+  # SE, N x M matrix where rows are observations/effect variables
   #  and columns are the standard errors of effects in X.
   # scales, vector of positive standard deviations of the largest effect size
   #         of each linemodel. Length is K, the number of linemodels.
   # slopes, matrix of slopes of the linemodels. One row per model.
-  #         M-1 columns where col 'i' specifies the slope between variables 'i' and 1 (i.e. x_i/x_1).
+  #         M-1 columns where col 'i' specifies the slope between effects 'i' and 1 (i.e. x_i/x_1).
   #         If M = 2, 'slopes' can be given as a vector, one element per model.
   # cors, vector of correlation parameters of the linemodels. Length is K.
   # model.names, names to be used in output for the models. Length is K.
@@ -970,18 +974,18 @@ line.models <- function(X, SE,
 #' A linemodel has the following properties:
 #'
 #' 1) Effects are scattered around line defined by vector (1,slope_1,...,slope_(M-1)).
-#'    Each slope_i is the slope between variable i+1 and variable 1.
+#'    Each slope_i is the slope between effect variables i+1 and 1.
 #'    Slope can be any real number or +/-Inf.
 #'    If any slope is infinite, the effect of variable 1 and variables with finite slopes are 0.
 #'    It is recommended to keep the slopes finite to avoid problems with interpretation.
 #'
 #' 2) The largest of the prior variances of the effects is scale^2.
-#'    The variable that has the largest scale is determined by the slopes,
+#'    The effect that has the largest scale is determined by the slopes,
 #'    and the scales of the remaining effects are determined by the slopes as well.
 #'
 #' 3) Distribution around the line is determined as follows.
 #'    Consider a distribution scattered around the direction of the vector (1,1,...,1)
-#'    with the given constant value of the pairwise correlations between the variables.
+#'    with the given constant value of the pairwise correlations between the effect variables.
 #'    Rotate that distribution by an orthogonal rotation that rotates the direction of the
 #'    vector (1,1,...,1) to the direction of the vector (1,slope_1,...,slope_(M-1))
 #'    and use the corresponding distribution, scaled so that the maximum variance
@@ -1002,8 +1006,8 @@ line.models <- function(X, SE,
 #' The prior distribution of the mixture proportions is Dirichlet(diri.prior) and
 #' a Gibbs sampler is used for estimating the posterior.
 #'
-#' @param X matrix of estimates with M columns (one col per variable and one row per observation)
-#' @param SE matrix of standard errors with M columns (one col per variable and one row per observation)
+#' @param X matrix of estimates with M columns (one col per effect variable and one row per observation)
+#' @param SE matrix of standard errors with M columns (one col per effect variable and one row per observation)
 #' @param scales K-vector of standard deviations of the largest effect, one per each linemodel
 #' @param slopes Kx(M-1)-matrix of slopes, one row per linemodel
 #'  If M = 2, can be given also as a K-vector of slopes, one per each linemodel
@@ -1047,14 +1051,14 @@ line.models.with.proportions <- function(X, SE,
   # Gibbs sampler to evaluate model probabilities for all data points jointly
   #  together with the posterior of the mixture proportions 'pi'.
   # INPUT
-  # X, N x M matrix where rows are observations/variables
+  # X, N x M matrix where rows are observations/effect variables
   #  and columns are the observed effect sizes.
-  # SE, N x M matrix where rows are observations/variables
+  # SE, N x M matrix where rows are observations/effect variables
   #  and columns are the standard errors of effects in X.
   # scales, vector of positive standard deviations of the largest effect size
   #         of each linemodel. Length is K, the number of linemodels.
   # slopes, matrix of slopes of the linemodels. One row per model.
-  #         M-1 columns where col 'i' specifies the slope between variables 'i' and 1 (i.e. x_i/x_1).
+  #         M-1 columns where col 'i' specifies the slope between effects 'i' and 1 (i.e. x_i/x_1).
   #         If M = 2, 'slopes' can be given as a vector, one element per linemodel.
   # cors, vector of correlation parameters of the linemodels. Length is K.
   # model.names, names to be used in output for the linemodels. Length is K.
@@ -1350,18 +1354,18 @@ optim.fn <- function(par, current, current.ind, force.same.scales, X, SE,
 #' A linemodel has the following properties:
 #'
 #' 1) Effects are scattered around line defined by vector (1,slope_1,...,slope_(M-1)).
-#'    Each slope_i is the slope between variable i+1 and variable 1.
+#'    Each slope_i is the slope between effect variables i+1 and 1.
 #'    Slope can be any real number or +/-Inf.
 #'    If any slope is infinite, the effect of variable 1 and variables with finite slopes are 0.
 #'    It is recommended to keep the slopes finite to avoid problems with interpretation.
 #'
 #' 2) The largest of the prior variances of the effects is scale^2.
-#'    The variable that has the largest scale is determined by the slopes,
+#'    The effect that has the largest scale is determined by the slopes,
 #'    and the scales of the remaining effects are determined by the slopes as well.
 #'
 #' 3) Distribution around the line is determined as follows.
 #'    Consider a distribution scattered around the direction of the vector (1,1,...,1)
-#'    with the given constant value of the pairwise correlations between the variables.
+#'    with the given constant value of the pairwise correlations between the effect variables.
 #'    Rotate that distribution by an orthogonal rotation that rotates the direction of the
 #'    vector (1,1,...,1) to the direction of the vector (1,slope_1,...,slope_(M-1))
 #'    and use the corresponding distribution, scaled so that the maximum variance
@@ -1374,8 +1378,8 @@ optim.fn <- function(par, current, current.ind, force.same.scales, X, SE,
 #' The parameters not included in optimization are kept fixed to their initial values.
 #' The proportion parameters are always optimized.
 #'
-#' @param X matrix of estimates with M columns (one col per variable and one row per observation)
-#' @param SE matrix of standard errors with M columns (one col per variable and one row per observation)
+#' @param X matrix of estimates with M columns (one col per effect variable and one row per observation)
+#' @param SE matrix of standard errors with M columns (one col per effect variable and one row per observation)
 #' @param par.include list with three components:
 #' 'scales' K-vector, slopes' Kx(M-1) matrix and 'cors' K-vector,
 #' where K is the no. of linemodels and M is the dimension of data.
@@ -1502,6 +1506,7 @@ line.models.optimize <- function(X, SE,
   chk = check.input("line.models.optimize:", X, SE,
                     init.scales, init.slopes, init.cors,
                     model.names, model.priors, r.lkhood)
+
   K = chk$K #number of models
   M = chk$M #number of dimensions
   init.slopes = chk$slopes
@@ -1527,6 +1532,7 @@ line.models.optimize <- function(X, SE,
   current.ind = list(scales = which(par.include$scales),
                      slopes = K + which(par.include$slopes),
                      cors = K*M + which(par.include$cors)) #indexes w.r.t current matrix of parameters to optimize
+
   if(force.same.scales){
     if(length(current.ind$scales) > 0) {
       current[current.ind$scales] = mean(current[current.ind$scales])} #initialize
@@ -1543,8 +1549,8 @@ line.models.optimize <- function(X, SE,
                                      assume.constant.SE = assume.constant.SE,
                                      return.posteriors = FALSE)
 
-  par.names = apply(matrix(0:(K*(M-1)-1),ncol = M - 1, nrow = K, byrow = TRUE), 2,
-                    function(x){paste0("slope", 1+floor(x/(M-1)), "_", 1+(x%%(M-1)))})
+  par.names = matrix(apply(matrix(0:(K*(M-1)-1),ncol = M - 1, nrow = K, byrow = TRUE), 2,
+                    function(x){paste0("slope", 1+floor(x/(M-1)), "_", 1+(x%%(M-1)))}), ncol = M - 1)
   par.names = cbind(paste0("scale",1:K), par.names, paste0("cor",1:K))
   if(print.steps > 0){
     cat(paste0("\n\nInitial values\n"))
@@ -1748,8 +1754,8 @@ sample.line.model <- function(n = 1, scale, slope, cor, scale.weights = c(1)){
 #' Finally, sample the observed effect estimates from a Gaussian around the true values
 #' by accounting for SEs and r.lkhood.
 #'
-#' @param X matrix of estimates with M columns (one col per variable and one row per observation)
-#' @param SE matrix of standard errors with M columns (one col per variable and one row per observation)
+#' @param X matrix of estimates with M columns (one col per effect variable and one row per observation)
+#' @param SE matrix of standard errors with M columns (one col per effect variable and one row per observation)
 #' @param scales K-vector of standard deviations of the largest effect, one per each linemodel
 #' @param slopes Kx(M-1)-matrix of slopes, one row per linemodel
 #'  If M = 2, can be given also as a K-vector of slopes, one per each linemodel
@@ -1757,7 +1763,7 @@ sample.line.model <- function(n = 1, scale, slope, cor, scale.weights = c(1)){
 #' @param linemodel.prob matrix of probabilities of each observation (row) in each model (col) up to a normalization constant
 #' @param r.lkhood correlation matrix of the estimators of the M effects
 #'  can be given also as a vector of the upper triangular values in the row-major order
-#' @return matrix of simulated observations with one column per variable and one row per observation in X
+#' @return matrix of simulated observations with one column per effect variable and one row per observation in X
 #' @examples
 #' #2D example
 #' simulate.linemodels.for.observations(
@@ -1850,8 +1856,8 @@ simulate.linemodels.for.observations <- function(
 #' Returns both the observed logLR and the simulated null distribution of logLR,
 #' which can be used for deriving an empirical P-value.
 #'
-#' @param X matrix of estimates with M columns (one col per variable and one row per observation)
-#' @param SE matrix of standard errors with M columns (one col per variable and one row per observation)
+#' @param X matrix of estimates with M columns (one col per effect variable and one row per observation)
+#' @param SE matrix of standard errors with M columns (one col per effect variable and one row per observation)
 #' @param n.sims number of simulated data sets for estimating distribution of logLR
 #' @param par.include.null list with three components for the NULL model:
 #' 'scales' K-vector, slopes' Kx(M-1) matrix and 'cors' K-vector,

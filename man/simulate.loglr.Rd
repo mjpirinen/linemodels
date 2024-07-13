@@ -29,9 +29,9 @@
 )
 }
 \arguments{
-\item{X}{matrix of estimates with M columns (one col per variable and one row per observation)}
+\item{X}{matrix of estimates with M columns (one col per effect variable and one row per observation)}
 
-\item{SE}{matrix of standard errors with M columns (one col per variable and one row per observation)}
+\item{SE}{matrix of standard errors with M columns (one col per effect variable and one row per observation)}
 
 \item{n.sims}{number of simulated data sets for estimating distribution of logLR}
 

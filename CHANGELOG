@@ -1,5 +1,11 @@
 linemodels R-package, ChangeLog
 
+v.0.4.0 (10-July-2024)
+- Added possibility to analyze more than 2 dimensions,
+   which required changes to existing functions.
+   Input formats of v.0.3.0 should still work.
+- Added multiple new functions.
+
 v.0.3.0 (20-Nov-2023)
 - Added simulate.loglr( )
 - Added simulate.linemodels.for.observations( )

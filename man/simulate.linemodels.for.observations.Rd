@@ -15,9 +15,9 @@
 )
 }
 \arguments{
-\item{X}{matrix of estimates with M columns (one col per variable and one row per observation)}
+\item{X}{matrix of estimates with M columns (one col per effect variable and one row per observation)}
 
-\item{SE}{matrix of standard errors with M columns (one col per variable and one row per observation)}
+\item{SE}{matrix of standard errors with M columns (one col per effect variable and one row per observation)}
 
 \item{linemodel.prob}{matrix of probabilities of each observation (row) in each model (col) up to a normalization constant}
 
@@ -32,7 +32,7 @@ If M = 2, can be given also as a K-vector of slopes, one per each linemodel}
 can be given also as a vector of the upper triangular values in the row-major order}
 }
 \value{
-matrix of simulated observations with one column per variable and one row per observation in X
+matrix of simulated observations with one column per effect variable and one row per observation in X
 }
 \description{
 See help of 'line.models( )' for details about specifying the models.

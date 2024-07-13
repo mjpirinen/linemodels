@@ -1,6 +1,6 @@
 # linemodels
 
-An R package to cluster bivariate effects based on linear relationships.
+An R package to cluster multi-dimensional effects based on linear relationships.
 
 See linemodels_vignette.pdf for what the package does and how to install it.
 Examples are in linemodels_examples.R.

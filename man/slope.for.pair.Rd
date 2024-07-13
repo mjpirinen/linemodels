@@ -2,7 +2,7 @@
 % Please edit documentation in R/linemodels.R
 \name{slope.for.pair}
 \alias{slope.for.pair}
-\title{Returns slopes between two variables ii and jj,
+\title{Returns slopes between two effects ii and jj,
 that is, the slopes 'b' of the line x_ii = b*x_jj}
 \usage{
 slope.for.pair(ii, jj, slopes)
@@ -13,7 +13,7 @@ slope.for.pair(ii, jj, slopes)
 \item{jj}{index of "x-axis" variable}
 
 \item{slopes}{matrix of size Kx(M-1), where column 'i' gives the
-slopes between variable 'i+1' and variable 1 or a vector of length M-1
+slopes between effects 'i+1' and 1 or a vector of length M-1
 M is the number of dimensions
 K is the number of linemodels}
 }
@@ -21,7 +21,7 @@ K is the number of linemodels}
 slopes for the pair specified for all K models
 }
 \description{
-Returns slopes between two variables ii and jj,
+Returns slopes between two effects ii and jj,
 that is, the slopes 'b' of the line x_ii = b*x_jj
 }
 \examples{

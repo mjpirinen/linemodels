@@ -40,9 +40,9 @@ visualize.multidimensional.line.models(
 
 \item{cors}{vector of correlation parameters of each model}
 
-\item{plot.pairs}{matrix of pairs of variables to be plotted (2 cols and 1 row per pair),}
+\item{plot.pairs}{matrix of pairs of effect variables to be plotted (2 cols and 1 row per pair)}
 
-\item{var.names}{names used as axis labels for the variables,}
+\item{var.names}{names used as axis labels for the effect variables}
 
 \item{model.names}{vector of names of each linemodel}
 
@@ -50,11 +50,11 @@ visualize.multidimensional.line.models(
 
 \item{legend.position}{position of legend, value NULL removes legend}
 
-\item{X}{points to be plotted, 1 col per variable, if NULL no points plotted}
+\item{X}{points to be plotted, 1 col per effect variable, if NULL no points plotted}
 
-\item{SE}{standard errors to be plotted around points, 1 col per variable, if NULL no SEs plotted}
+\item{SE}{standard errors to be plotted around points, 1 col per effect, if NULL no SEs plotted}
 
-\item{SE.mult}{multiplier of SE to be plotted around each point, default 1.96 i.e. 95% conf. intervals}
+\item{SE.mult}{multiplier of SE to be plotted around each point, default 1.96 i.e. 95\% conf. intervals}
 
 \item{model.prob}{matrix of probability of each observation (row) in each model (col), can be NULL}
 

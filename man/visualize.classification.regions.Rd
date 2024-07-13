@@ -16,8 +16,8 @@ visualize.classification.regions(
   xlim = NULL,
   ylim = NULL,
   breakpoints = 200,
-  xlab = "VARIABLE1",
-  ylab = "VARIABLE2",
+  xlab = "EFFECT1",
+  ylab = "EFFECT2",
   cex.lab = 1,
   cex.axis = 1,
   line.lty = 1,
@@ -34,7 +34,7 @@ visualize.classification.regions(
 
 \item{cors}{vector of correlation parameters of linemodels}
 
-\item{SE}{vector of two standard errors for variable1 and variable2, respectively}
+\item{SE}{vector of two standard errors for effect1 and effect2, respectively}
 
 \item{r.lkhood}{correlation between estimators of the two values}
 

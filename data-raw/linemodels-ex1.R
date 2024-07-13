@@ -1,7 +1,7 @@
 ## code to prepare `linemodels.ex1` dataset goes here
 scales = c(0.2, 0.2, 0.2)
 slopes = matrix(c(0, 0,
-                  0.5, 0,
+                  0.5, 0.2,
                   1, 1), byrow = TRUE, ncol = 2)
 cors = c(0.995, 0.995, 0.995)
 ns = c(20, 40, 40)
