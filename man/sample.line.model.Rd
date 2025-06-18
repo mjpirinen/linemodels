@@ -26,6 +26,7 @@ See help of 'line.models( )' for details about specifying the models.
 }
 \examples{
 sample.line.model(10, scale = 0.1, slope = 1, cor = 0.99)
-sample.line.model(10, scale = 0.1, slope = 1, cor = 0.99, scale.weights = c(1,0,1))
+sample.line.model(10, scale = 0.1, slope = 1, cor = 0.99,
+                  scale.weights = c(1,0,1))
 sample.line.model(10, scale = 0.1, slope = c(1,-1), cor = 0.99)
 }

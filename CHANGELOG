@@ -1,5 +1,11 @@
 linemodels R-package, ChangeLog
 
+v.0.5.0 (17-June-2025)
+- Added function line.models.with.features()
+  Which is based on line-models.with.proportions() but adds a possibility to
+  Let the given features affect the prior probabilities of the line models in
+  An observations-specific way.
+
 v.0.4.0 (10-July-2024)
 - Added possibility to analyze more than 2 dimensions,
    which required changes to existing functions.

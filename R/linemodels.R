@@ -1,7 +1,7 @@
-# linemodels (0.4.0): An R package to cluster multi-dimensional effects into
+# linemodels (0.5.0): An R package to cluster multi-dimensional effects into
 #  groups defined by linear relationships.
-# DATE: 10-July-2024
-# Copyright (C) 2022-2024, Matti Pirinen
+# DATE: 17-June-2025
+# Copyright (C) 2022-2025, Matti Pirinen
 # Contact: matti.pirinen@helsinki.fi
 # LICENSE:
 #   This program is free software; you can redistribute it and/or modify
@@ -58,7 +58,7 @@
 # To choose a reasonable scale, note that 95% of the effects are assumed to be < 2*scale.
 
 #
-# 12 functions for user to call directly are listed below.
+# 13 functions for user to call directly are listed below.
 #
 
 # beta.cor.case.control(s1, r1, s2 ,r2, s1s2 = 0, r1r2 = 0, s1r2 = 0, r1s2 = 0)
@@ -137,6 +137,20 @@
 # -- To evaluate the model probabilities together with the proportions of
 #    observations coming from each model. Uses Gibbs sampler for a joint
 #    estimation of membership probabilities across all observations.
+
+# line.models.with.features <- function(X, SE,
+#                                      scales, slopes, cors,
+#                                      model.names = NULL,
+#                                      r.lkhood = rep(0, ncol(X)*(ncol(X)-1)/2),
+#                                      n.iter = 200, n.burnin = 20,
+#                                      features = NULL,
+#                                      verbose = TRUE)
+# -- To evaluate the model probabilities using prior probabilities that
+#    depend on the 'features' through a multinomial regression model.
+#    Uses Gibbs sampler for a joint
+#    estimation of membership probabilities across all observations.
+
+
 
 # line.models.optimize(X, SE,
 #                      par.include = NULL,
@@ -263,7 +277,7 @@ rdirichlet <- function(alpha){
 }
 
 
-
+#' @export
 log.dmvnorm <- function(x, mu = NULL, S = NULL ){
 
   # Returns log of density of MV-Normal(mean = mu, var = S) at x
@@ -292,12 +306,13 @@ check.input <- function(msg, X, SE,
                         model.names = NULL,
                         model.priors = NULL,
                         r.lkhood = NULL,
+                        features = NULL,
                         scale.weights = NULL){
   # Checks common input variables for consistency and outputs
   # updated values of each of them.
   # Additionally, returns values of K (no. of linemodels) and M (dimension).
   # Input parameter 'msg' is used to specify from which function this was called
-  # so that the error messages are informative.
+  # to make the error messages informative.
 
   M = ncol(X) #number of dimensions
   if(M < 2) stop(paste(msg,"Input data 'X' must have at least two columns."))
@@ -338,6 +353,21 @@ check.input <- function(msg, X, SE,
   if(max(abs(diag(r.lkhood)-1)) > 1e-10) stop(paste(msg,"Diagonal of 'r.lkhood' must be 1."))
   if(any(r.lkhood < (-1)) || any(r.lkhood > 1)) stop(paste(msg,"Some value of 'r.lkhood' is outside [-1,1]."))
 
+  if(!is.null(features)){
+    if(is.vector(features)){
+      if(length(features) != nrow(X)){
+        stop("If 'features' is vector, length should be the no. of rows of 'X'.")}
+      features = as.matrix(features, nrow = nrow(X), ncol = 1)
+    }
+    if(is.matrix(features)){
+      p = ncol(features)
+      if(nrow(features) != nrow(X)) stop("No. of rows of 'feature' matrix should equal no. of rows of 'X'.")
+      if(min(apply(features, 2, var)) == 0.0) stop("Feature matrix must not have any constant columns.")
+    }else{
+      stop("Parameter 'feature' should be a matrix. (Or a vector, if only one feature present.)")}
+  }
+  features = cbind(rep(1, nrow(X)), features) #always add a constant baseline
+
   if(!is.null(scale.weights)){
     if(is.vector(scale.weights)){
       scale.weights = matrix(scale.weights, byrow = T,
@@ -349,6 +379,7 @@ check.input <- function(msg, X, SE,
 
   return(list(K = K, M = M, slopes = slopes, model.names = model.names,
               model.priors = model.priors, r.lkhood = r.lkhood,
+              features = features,
               scale.weights = scale.weights))
   }
 
@@ -918,8 +949,11 @@ line.models <- function(X, SE,
   # Returns a matrix with membership probabilities in each linemodel (in columns)
   # for each observations (in rows).
 
-  chk = check.input("line.models:", X, SE, scales, slopes, cors, model.names,
-                    model.priors, r.lkhood, scale.weights)
+  chk = check.input("line.models:", X, SE, scales, slopes, cors,
+                    model.names = model.names,
+                    model.priors = model.priors,
+                    r.lkhood = r.lkhood,
+                    scale.weights = scale.weights)
   K = chk$K #number of models
   M = chk$M #number of dimensions
   slopes = chk$slopes
@@ -1141,6 +1175,229 @@ line.models.with.proportions <- function(X, SE,
                 t(apply(R.par ,2 , function(x){quantile(x, c(0.025, 0.975))})),
                 apply(R.par, 2, sd))
   colnames(res.par) = c("mean","95%low","95%up","sd")
+
+  res.ind = R.ind / n.iter
+  return(list(params = res.par, groups = res.ind))
+}
+
+
+
+#' Feature dependent priors on linemodels
+#'
+#' Consider M effect sizes.
+#' The linemodels are defined by three parameters:
+#' scale = standard deviation of the (largest) effect,
+#' slope = set of M-1 slopes defining the line around which the effects are scattered,
+#' cor = non-negative pairwise correlation between each effect pair,
+#' where cor = 1 means the same effect and cor = 0 means independent effects.
+#'
+#' A linemodel has the following properties:
+#'
+#' 1) Effects are scattered around line defined by vector (1,slope_1,...,slope_(M-1)).
+#'    Each slope_i is the slope between effect variables i+1 and 1.
+#'    Slope can be any real number or +/-Inf.
+#'    If any slope is infinite, the effect of variable 1 and variables with finite slopes are 0.
+#'    It is recommended to keep the slopes finite to avoid problems with interpretation.
+#'
+#' 2) The largest of the prior variances of the effects is scale^2.
+#'    The effect that has the largest scale is determined by the slopes,
+#'    and the scales of the remaining effects are determined by the slopes as well.
+#'
+#' 3) Distribution around the line is determined as follows.
+#'    Consider a distribution scattered around the direction of the vector (1,1,...,1)
+#'    with the given constant value of the pairwise correlations between the effect variables.
+#'    Rotate that distribution by an orthogonal rotation that rotates the direction of the
+#'    vector (1,1,...,1) to the direction of the vector (1,slope_1,...,slope_(M-1))
+#'    and use the corresponding distribution, scaled so that the maximum variance
+#'    among the effects is set to scale^2.
+#'    NOTE: This is not same as having the given correlation around line defined by the slopes,
+#'          because the shape of that distribution depends on the slopes but the
+#'         definition we use here is independent of slopes up to an orthogonal transformation.
+#'
+#' Examples:
+#' Set scale = 0 to get the null model. (Values of slope and cor do not matter in this case.)
+#' Use scale > 0, slope = 1 and cor = 0 to get independent effects model for 2-dim case.
+#' Use scale > 0, slope = c(1,1,1) and cor = 1 to get fixed effects model for 4-dim case.
+#' Use scale > 0, slope = 1 and 0 < cor < 1  to get correlated effects model for 2-dim case.
+#'               note that cor value needs to be quite near 1 to get very similar values
+#'               between the two effects with high probability (e.g. cor = 0.99...0.999).
+#'
+#'
+#' The prior distribution of each observation belonging to each linemodel can
+#' depend on observation specific values of 'features' given as parameter.
+#' The relationship between features and prior probabilities is defined by
+#' a logistic/multinomial regression model.
+#' A Gibbs sampler is used for estimating the posterior probabilities of the memberships.
+#'
+#' @param X nxM matrix of estimates with M columns (one col per effect variable and one row per observation)
+#' @param SE nxM matrix of standard errors with M columns (one col per effect variable and one row per observation)
+#' @param scales K-vector of standard deviations of the largest effect, one per each linemodel
+#' @param slopes Kx(M-1)-matrix of slopes, one row per linemodel
+#'  If M = 2, can be given also as a K-vector of slopes, one per each linemodel
+#' @param cors K-vector of correlation parameters, one per each linemodel
+#' @param model.names K-vector of names of linemodels
+#' @param r.lkhood MxM correlation matrix of the estimators of the M effects
+#'  can be given also as a vector of the upper triangular values in the row-major order
+#' @param n.iter number of Gibbs sampler iterations (after burn-in)
+#' @param n.burnin number of burn-in iterations that will be discarded
+#' @param features nxp matrix of features with one row per observation and one column per feature.
+#'  If NULL, then only a constant feature is modelled.
+#'  Every feature much show variation among observations
+#'  while an intercept is added to the model automatically.
+#' @param verbose if TRUE, prints the index of every 100th iteration
+#' @return List with two components: (1) 'params', K*(p+1)x4 matrix of
+#' posterior distribution of regression coefficient of each features for each linemodel,
+#' where p is the number of (columns of) 'features'.
+#' Columns are mean, lower and upper points of 95\% credible interval
+#' and standard deviation.
+#' One row per coefficient, each linemodel has p+1 coefficients.
+#' (2)  'groups', nxK matrix with one column per linemodel and one row per observation giving
+#' membership probabilities of each observation in each model.
+#' @examples
+#' #2D example
+#' line.models.with.features(
+#'            X = linemodels.ex2[,c("beta1","beta2")],
+#'            SE = linemodels.ex2[,c("se1","se2")],
+#'            scales = c(0.1, 0.1),
+#'            slopes = c(0, 3),
+#'            cors = c(0.999, 0.999),
+#'            features = linemodels.ex2$anno)
+#' #3D example
+#' line.models.with.features(
+#'            X = linemodels.ex2[,c("beta1","beta2","beta3")],
+#'            SE = linemodels.ex2[,c("se1","se2","se3")],
+#'            scales = c(0.2, 0.2),
+#'            slopes = matrix(c(0,-2, 3,6), byrow = TRUE, ncol = 2),
+#'            cors = c(0.999, 0.999),
+#'            features = linemodels.ex2$anno)
+#' @import UPG
+#' @export
+line.models.with.features <- function(X, SE,
+                                      scales, slopes, cors,
+                                      model.names = NULL,
+                                      r.lkhood = rep(0, ncol(X)*(ncol(X)-1)/2),
+                                      n.iter = 200, n.burnin = 20,
+                                      features = NULL,
+                                      verbose = TRUE){
+
+  # Gibbs sampler to evaluate model probabilities for all data points jointly
+  #  together with the posterior of the feature effects on model probabilities.
+  # INPUT
+  # X, N x M matrix where rows are observations/effect variables
+  #  and columns are the observed effect sizes.
+  # SE, N x M matrix where rows are observations/effect variables
+  #  and columns are the standard errors of effects in X.
+  # scales, vector of positive standard deviations of the largest effect size
+  #         of each linemodel. Length is K, the number of linemodels.
+  # slopes, matrix of slopes of the linemodels. One row per model.
+  #         M-1 columns where col 'i' specifies the slope between effects 'i' and 1 (i.e. x_i/x_1).
+  #         If M = 2, 'slopes' can be given as a vector, one element per linemodel.
+  # cors, vector of correlation parameters of the linemodels. Length is K.
+  # model.names, names to be used in output for the linemodels. Length is K.
+  # r.lkhood, determines correlation of the effect estimators.
+  #           Default is 0, which assumes that estimators were uncorrelated.
+  #           Can be given either as a symmetric correlation matrix or
+  #           as a vector containing the upper triangle of the matrix in the row-major order.
+  # n.iter, number of Gibbs sampler iterations after burn-in (default 200)
+  # n.burnin, number of burn-in iterations that are discarded from final results (default 20).
+  # features, is an N x p matrix of features used to model the prior distribution
+  #.          for membership probability of an observation in a linemodel
+  #           through a logistic or multinomial regression model where the features are the predictors.
+  #           Every feature must show some variation among the observations; intercept is added automatically.
+  #           Set features = NULL, if p = 0. Then only a constant intercept is included in the regression model.
+  # verbose, logical, if TRUE (default), prints counter of every 100th of iteration.
+
+  # Does not allow 'scale.weights' from line.models( ).
+
+  # OUTPUT:
+  # Returns a list of 2 matrices labelled
+  # 'groups' row per observation and membership probabilities in linemodels in columns
+  # 'params' posterior distribution of the regression coefficients.
+
+  chk = check.input("line.models.with.features:", X = X, SE = SE,
+                    scales = scales, slopes = slopes, cors = cors,
+                    model.names = model.names,
+                    r.lkhood = r.lkhood,
+                    features = features)
+  K = chk$K #number of models
+  M = chk$M #number of dimensions
+  n = nrow(X) #number of observations
+  slopes = chk$slopes
+  r.lkhood = chk$r.lkhood
+  model.names = chk$model.names
+  features = chk$features
+  p = ncol(features) - 1 #p doesn't include the intercept
+
+  if(n.burnin < 0) stop("'n.burnin' must be non-negative.")
+  if(n.iter < 1) stop("'n.iter' must be positive.")
+
+  pr.V = list()
+  for(kk in 1:K) pr.V[[kk]] = prior.V(scale = scales[kk], slopes = slopes[kk,], cor = cors[kk])
+
+  logdnorm = matrix(NA, ncol = K, nrow = n)
+  for(ii in 1:n){
+    V = diag(SE[ii,]) %*% r.lkhood %*% diag(SE[ii,]) #var of likelihood
+    for(kk in 1:K){
+      logdnorm[ii,kk] = log.dmvnorm(X[ii,], mu = rep(0, M), S = V + pr.V[[kk]])
+    }
+  }
+
+  R.par = matrix(NA, ncol = K*(p+1), nrow = n.iter) #results for coefficients
+  colnames(R.par) = paste0(rep(model.names, each = p + 1), 0:p, sep = "_")
+  R.ind = matrix(0, ncol = K, nrow = n) #results for individual observations
+  colnames(R.ind) = model.names
+
+  coeffs = matrix(0, nrow = p + 1, ncol = K) #initial coefficients
+  grs = sample(1:K, size = n, prob = rep(1,K), replace = TRUE) #initially random grouping
+
+  for(ii in 1:(n.burnin + n.iter)){ #Gibbs sampler
+
+    #count how many are assigned to each group
+    tmp = rle(sort(grs))
+    gr.counts = rep(0, K)
+    gr.counts[tmp$values] = tmp$length
+
+    #sample coefficients (only if multiple groups ar present)
+    if(var(grs) > 0){
+      if(K == 2){ #use logistic regression
+        coeffs.draw = UPG:::upg.logit(
+                        grs - 1, features,
+                        nsave = 1, nburn = 0, verbose = F,
+                        beta.start = coeffs[,1])
+        coeffs = cbind(rep(0, p+1), t(coeffs.draw$beta)) #Set 0s for the baseline model
+      }else{ #use multinomial regression
+        grs.matrix = matrix(0, n, K)
+        for(kk in 1:K){ grs.matrix[grs == kk, kk] = 1 }
+        coeffs.draw = UPG:::upg.mnl(
+                        grs.matrix,features,
+                        nsave = 1, nburn = 0, verbose = F,
+                        beta.start = coeffs)
+        coeffs = coeffs.draw$beta[,,1:K]
+      }
+    }
+    log.pr = features %*% coeffs #n x K matrix of (unnormalized) log priors per linemodel
+
+    #sample group indicators for variants
+    tmp = logdnorm + log.pr
+    pr = exp(tmp - apply(tmp, 1, max))
+    #pr = pr/rowSums(pr) #no need to normalize for 'sample()'
+    grs = apply(pr, 1, function(xx){ sample(1:K, size = 1, prob = xx) })
+    if(ii > n.burnin){ #save results if burn-in is over
+      R.ind[(1:n) + n*(grs-1)] = 1 + R.ind[(1:n) + n*(grs-1)]
+      R.par[ii - n.burnin,] = as.vector(coeffs)
+    }
+    if(verbose && (ii %% 100 == 0)) print(paste(ii,"iterations done."))
+  }
+
+  res.par = cbind(apply(R.par, 2, mean),
+                  t(apply(R.par ,2 , function(x){quantile(x, c(0.025, 0.975))})),
+                  apply(R.par, 2, sd))
+  colnames(res.par) = c("mean","95%low","95%up","sd")
+  if(p > 0){
+    rownames(res.par) = c(paste0(rep(model.names,each = p + 1),
+                                 c("_intcp.",paste0("_X",1:p))))}
+  else{rownames(res.par) = c(paste0(rep(model.names,each = p + 1),
+                                    c("_intcp.")))}
 
   res.ind = R.ind / n.iter
   return(list(params = res.par, groups = res.ind))
@@ -1420,33 +1677,42 @@ optim.fn <- function(par, current, current.ind, force.same.scales, X, SE,
 #' cors, K-vector for correlation parameters of models 1,...,K
 #' weights, giving the mixture weights of the linemodels
 #' @examples
-#' #2D example optimizing slope and cor of 2nd model (w/o assuming constant SEs)
+#' #2D example optimizing slope and cor of 2nd model
+#' #(w/o assuming constant SEs)
 #' line.models.optimize(
 #'      X = linemodels.ex1[,c("beta1","beta2")],
 #'      SE = linemodels.ex1[,c("se1","se2")],
-#'      par.include = rbind(c(F,F,F), c(F,T,T), c(F,F,F)),
+#'      par.include = rbind(c(FALSE,FALSE,FALSE),
+#'                          c(FALSE,TRUE,TRUE),
+#'                          c(FALSE,FALSE,FALSE)),
 #'      force.same.scales = FALSE,
 #'      init.scales = c(0.2, 0.2, 0.2),
 #'      init.slopes = c(0, 0.2, 1),
 #'      init.cors = c(0.995, 0.5, 0.995))
-#' #2D example assuming constant SEs after scaling the effects by minor allele frequencies
+#' #2D example assuming constant SEs after scaling the effects
+#' # by minor allele frequencies.
 #' # and optimizing scales that are assumed same across the linemodels
 #' # and slope and cor of the 2nd model as above.
 #' sc = sqrt(2 * linemodels.ex1$maf * (1 - linemodels.ex1$maf))
 #' line.models.optimize(
 #'      X = linemodels.ex1[,c("beta1","beta2")]*sc,
 #'      SE = linemodels.ex1[,c("se1","se2")]*sc,
-#'      par.include = rbind(c(T,F,F), c(T,T,T), c(T,F,F)),
+#'      par.include = rbind(c(TRUE,FALSE,FALSE),
+#'                          c(TRUE,TRUE,TRUE),
+#'                          c(TRUE,FALSE,FALSE)),
 #'      force.same.scales = TRUE,
 #'      init.scales = c(0.2, 0.2, 0.2),
 #'      init.slopes = c(0, 0.2, 1),
 #'      init.cors = c(0.995, 0.5, 0.995),
 #'      assume.constant.SE = TRUE)
-#' #3D example optimizing all slopes (you can also scale X and SEs and assume constant SE as above to speed up)
+#' #3D example optimizing all slopes
+#' #(you can also scale X and SEs and assume constant SE as above to speed up)
 #' line.models.optimize(
 #'      X = linemodels.ex1[,c("beta1","beta2","beta3")],
 #'      SE = linemodels.ex1[,c("se1","se2","se3")],
-#'      par.include = list(scales = c(F,F,F), slopes = matrix(TRUE, ncol = 2, nrow = 3), cors = c(F,F,F)),
+#'      par.include = list(scales = c(FALSE,FALSE,FALSE),
+#'                         slopes = matrix(TRUE, ncol = 2, nrow = 3),
+#'                         cors = c(FALSE,FALSE,FALSE)),
 #'      force.same.scales = FALSE,
 #'      init.scales = c(0.2, 0.2, 0.2),
 #'      init.slopes = rbind(c(0, 0), c(0.2, 0), c(0.5, 1)),
@@ -1505,7 +1771,9 @@ line.models.optimize <- function(X, SE,
 
   chk = check.input("line.models.optimize:", X, SE,
                     init.scales, init.slopes, init.cors,
-                    model.names, model.priors, r.lkhood)
+                    model.names = model.names,
+                    model.priors = model.priors,
+                    r.lkhood = r.lkhood)
 
   K = chk$K #number of models
   M = chk$M #number of dimensions
@@ -1699,7 +1967,8 @@ line.models.optimize <- function(X, SE,
 #' @return matrix with one row per sample and one column per effect on each outcome
 #' @examples
 #' sample.line.model(10, scale = 0.1, slope = 1, cor = 0.99)
-#' sample.line.model(10, scale = 0.1, slope = 1, cor = 0.99, scale.weights = c(1,0,1))
+#' sample.line.model(10, scale = 0.1, slope = 1, cor = 0.99,
+#'                   scale.weights = c(1,0,1))
 #' sample.line.model(10, scale = 0.1, slope = c(1,-1), cor = 0.99)
 #' @export
 sample.line.model <- function(n = 1, scale, slope, cor, scale.weights = c(1)){
@@ -1767,13 +2036,15 @@ sample.line.model <- function(n = 1, scale, slope, cor, scale.weights = c(1)){
 #' @examples
 #' #2D example
 #' simulate.linemodels.for.observations(
-#'    X = linemodels.ex1[,c("beta1","beta2")], SE = linemodels.ex1[,c("se1","se2")],
+#'    X = linemodels.ex1[,c("beta1","beta2")],
+#'    SE = linemodels.ex1[,c("se1","se2")],
 #'    scales = c(0.25, 0.25),
 #'    slopes = c(0, 1),
 #'    cors = c(0.995, 0.995))
 #' #3D example
 #' simulate.linemodels.for.observations(
-#'    X = linemodels.ex1[,c("beta1","beta2","beta3")], SE = linemodels.ex1[,c("se1","se2","se3")],
+#'    X = linemodels.ex1[,c("beta1","beta2","beta3")],
+#'    SE = linemodels.ex1[,c("se1","se2","se3")],
 #'    scales = c(0.25, 0.25),
 #'    slopes = rbind(c(0, 0), c(1,1)),
 #'    cors = c(0.995, 0.95))
@@ -1909,26 +2180,29 @@ simulate.linemodels.for.observations <- function(
 #' simulate.loglr(
 #'    X = linemodels.ex1[,c("beta1","beta2")], SE = linemodels.ex1[,c("se1","se2")],
 #'    n.sims = 2,
-#'    par.include.null = rbind(c(F,F,F), c(F,F,F)),
+#'    par.include.null = rbind(rep(FALSE,3), rep(FALSE,3)),
 #'    init.scales.null = c(0.25, 0.25),
 #'    init.slopes.null = c(0, 1),
 #'    init.cors.null = c(0.995, 0.995),
-#'    par.include.alt = rbind(c(F,F,F), c(F,F,F), c(F,T,F)),
+#'    par.include.alt = rbind(rep(FALSE,3), rep(FALSE,3), c(FALSE,TRUE,FALSE)),
 #'    init.scales.alt = c(0.25, 0.25, 0.25),
 #'    init.slopes.alt = c(0, 1, 0.5),
 #'    init.cors.alt = c(0.995, 0.995, 0.995))
-#' # Same as above but scaling effects and SEs to allow SEs to be treated as constant to speed up
+#' # Same as above but scaling effects and SEs to allow SEs to be treated
+#' #   as constant to speed up
 #' # Also estimates the scales of all linemodels and forces same scales across linemodels.
 #' sc = sqrt(2 * linemodels.ex1$maf * (1 - linemodels.ex1$maf))
 #' simulate.loglr(
 #'    X = linemodels.ex1[,c("beta1","beta2")]*sc, SE = linemodels.ex1[,c("se1","se2")]*sc,
 #'    n.sims = 2,
-#'    par.include.null = rbind(c(T,F,F), c(T,F,F)),
+#'    par.include.null = rbind(c(TRUE,FALSE,FALSE), c(TRUE,FALSE,FALSE)),
 #'    init.scales.null = c(0.15, 0.15),
 #'    init.slopes.null = c(0, 1),
 #'    init.cors.null = c(0.995, 0.995),
 #'    force.same.scales.null = TRUE,
-#'    par.include.alt = rbind(c(T,F,F), c(T,F,F), c(T,T,F)),
+#'    par.include.alt = rbind(c(TRUE,FALSE,FALSE),
+#'                            c(TRUE,FALSE,FALSE),
+#'                            c(TRUE,TRUE,FALSE)),
 #'    init.scales.alt = c(0.15, 0.15, 0.15),
 #'    init.slopes.alt = c(0, 1, 0.5),
 #'    init.cors.alt = c(0.995, 0.995, 0.995),

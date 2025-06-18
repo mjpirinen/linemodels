@@ -1,11 +1,13 @@
 ### Example analyses using linemodels R functions
-### Matti Pirinen, updated on 11-July-2024.
+### Matti Pirinen, updated on 17-June-2025.
 
 ### Contents
 ### 1. Install linemodels package
 ### 2. Example 1. Simulated data with 100 observations in 2-dimensions
 ### 3. Example 2. COVID-19 Host Genetic Initiative release 6 data
 ### 4. Example 3. Simulated data with 100 observations in 3-dimensions
+### 5. Example 4. Annotations with 101 observations in 2-dimensions
+### 6. Example 5. Annotations with 101 observations in 3-dimensions
 
 
 
@@ -27,6 +29,7 @@ library(linemodels)
 head(linemodels.ex1)
 #Should show 7 cols:
 #beta1, beta2, beta3, se1, se2, se3, maf
+# Similarly you can read 'linemodels.ex2'.
 
 #
 ##
@@ -459,4 +462,181 @@ visualize.multidimensional.line.models(
 # Here the points with membership probability > 80% in one of the linemodels are colored.
 # The remaining ("undetermined") points are left gray.
 
+
+#
+##
+### 5. Example 4. Annotations with 101 observations in 2-dimensions
+##
+#
+# We use data set linemodels.ex2
+# Setting:
+#  There are two sets of variants
+#  50 "Blue" variants have slope = (0, -2)
+#  50 "Red" variants have slope = (3, 6)
+#  Last "Orange" variant (index 101) is an outlier
+#  that is located in between the Blue and Red linemodels
+#  and it has a large standard error, so assignment probability
+#   is ~50%:50% (without annotations).
+
+# Here we run in 2D and take only beta1 and beta2
+X = linemodels.ex2[,c("beta1","beta2")]
+SE = linemodels.ex2[,c("se1","se2")]
+slopes = matrix(c(0, 3), ncol = 1)
+scales = rep(0.1, nrow(slopes))
+cors = rep(0.999, nrow(slopes))
+colors = c("dodgerblue","red","orange")
+n = nrow(X)
+# visualize the data and the models
+par(mfrow = c(1,1))
+visualize.line.models(scales, slopes, cors,
+                      model.cols = colors,
+                      legend.position = NULL,
+                      xlab = expression(beta[1]), ylab = expression(beta[2]),
+                      emphasize.axes = FALSE, cex.lab = 1.3, cex.axis = 1.3)
+points(X, pch = 1, col = "black", cex = 0.5)
+arrows(X[n,1]-1.96*SE[n,1],X[n,2],X[n,1]+1.96*SE[n,1],X[n,2],
+       code = 3, angle = 90, length = 0.01, col = "gray")
+arrows(X[n,1],X[n,2]-1.96*SE[n,2],X[n,1],X[n,2]+1.96*SE[n,2],
+       code = 3, angle = 90, length = 0.01, col = "gray")
+points(X[n,1],X[n,2], col = "orange", cex = 1.5, lwd = 1.5)
+
+# Run the data without annotations
+res.p = line.models.with.proportions(X, SE,
+                                     scales, slopes, cors,
+                                     model.names = NULL,
+                                     r.lkhood = rep(0, ncol(X)*(ncol(X)-1)/2),
+                                     n.iter = 500, n.burnin = 20,
+                                     verbose = TRUE)
+
+# Run the data with annotations
+res.f = line.models.with.features(X, SE,
+                                  scales, slopes, cors,
+                                  model.names = NULL,
+                                  r.lkhood = rep(0, ncol(X)*(ncol(X)-1)/2),
+                                  n.iter = 500, n.burnin = 20,
+                                  features = linemodels.ex2$annotation,
+                                  verbose = TRUE)
+
+# Posterior probability of each point in each model is in res.f$groups
+# Thus for the outlier point we have
+res.p$groups[n,] #without annotations
+res.f$groups[n,] #with annotations
+
+#plot assignment probability of the outlier without and with annotations
+par(mfrow = c(1,1))
+barplot(t(rbind(res.p$groups[n,],
+                res.f$groups[n,])), col = colors,
+        main = "Posterior of the outlier",
+        names.arg = c("No annot",
+              "Annotation"))
+# We see that 0.5 probability without annotations has turned to about
+# 80% probability when annotations draw the outlier to the "Red" model.
+
+# Plot the posteriors of the red model across all points between
+# case with no annotation (x-axis) and annotation (y-axis).
+# Here the outlier had annotation = 1 and clusters with
+# the red points in the y-axis values.
+plot(res.p$groups[,2], res.f1$groups[,2],
+     col = c(rep(colors[1:2], times = c(50,50)), col = "orange"),
+     pch = 19, ylab = "Pr(Red) with annotations",
+     xlab = "Pr(Red) without annotations",
+     main = "")
+points(res.p$groups[n,2], res.f1$groups[n,2], col = "orange", cex = 1.5, lwd = 1.5)
+abline(0,1)
+par(mfrow = c(1,1))
+legend("topleft",legend = c("True R (a = 1)","True B (a = 0)","Outlier (a = 1)"),
+       pch = 19, col = colors[c(2,1,3)], cex = 0.7)
+
+
+
+#The regression coefficients of the annotation model can be found in
+res.f$params
+#It has coeffs for the intercept and for the annotation value ("X1")
+# Baseline model is Model1 and its coefficients are 0
+# Coefficients are from multinomial regression and thus on log-odds scale.
+
+
+
+#
+##
+### 6. Example 5. Annotations with 101 observations in 3-dimensions
+##
+#
+
+# We continue from previous example but use 3D data.
+X = linemodels.ex2[,c("beta1","beta2","beta3")]
+SE = linemodels.ex2[,c("se1","se2","se3")]
+slopes = matrix(c(0, -2,
+                  3,  6), byrow = T, ncol = 2)
+scales = rep(0.1, nrow(slopes))
+cors = rep(0.999, nrow(slopes))
+colors = c("dodgerblue","red","orange")
+n = nrow(X)
+
+# visualize the data and the models
+par(mfrow = c(1,3))
+visualize.multidimensional.line.models(scales, slopes, cors,
+                                       plot.pairs = matrix(c(1,2, 1,3, 2,3),
+                                                           ncol = 2, byrow = T),
+                                       model.cols = colors[1:2],
+                                       legend.position = NULL,
+                                       X = X, SE = SE,
+                                       model.prob = cbind(c(rep(c(1,0),c(50,50)),0.5),
+                                                          c(rep(c(0,1),c(50,50)),0.5)),
+                                       model.thresh = 0.9,
+                                       undetermined.col = colors[3])
+
+# Run the data without annotations
+res.p = line.models.with.proportions(X, SE,
+                                     scales, slopes, cors,
+                                     model.names = NULL,
+                                     r.lkhood = rep(0, ncol(X)*(ncol(X)-1)/2),
+                                     n.iter = 500, n.burnin = 20,
+                                     verbose = TRUE)
+
+# Run the data with annotations
+res.f = line.models.with.features(X, SE,
+                                  scales, slopes, cors,
+                                  model.names = NULL,
+                                  r.lkhood = rep(0, ncol(X)*(ncol(X)-1)/2),
+                                  n.iter = 500, n.burnin = 20,
+                                  features = linemodels.ex2$annotation,
+                                  verbose = TRUE)
+
+# Posterior probability of each point in each model is in res.f$groups
+# Thus for the outlier point we have
+res.p$groups[n,] #without annotations
+res.f$groups[n,] #with annotations
+
+#plot assignment probability of the outlier without and with annotations
+par(mfrow = c(1,1))
+barplot(t(rbind(res.p$groups[n,],
+                res.f$groups[n,])), col = colors,
+        main = "Posterior of the outlier",
+        names.arg = c("No annot",
+                      "Annotation"))
+# We see that 0.5 probability without annotations has turned to about
+# 80% probability when annotations draw the outlier to the "Red" model.
+
+# Plot the posteriors of the red model across all points between
+# case with no annotation (x-axis) and annotation (y-axis).
+# Here the outlier had annotation = 1 and clusters with
+# the red points in the y-axis values.
+plot(res.p$groups[,2], res.f1$groups[,2],
+     col = c(rep(colors[1:2], times = c(50,50)), col = "orange"),
+     pch = 19, ylab = "Pr(Red) with annotations",
+     xlab = "Pr(Red) without annotations",
+     main = "")
+points(res.p$groups[n,2], res.f1$groups[n,2], col = "orange", cex = 1.5, lwd = 1.5)
+abline(0,1)
+par(mfrow = c(1,1))
+legend("topleft",legend = c("True R (a = 1)","True B (a = 0)","Outlier (a = 1)"),
+       pch = 19, col = colors[c(2,1,3)], cex = 0.7)
+
+
+#The regression coefficients of the annotation model can be found in
+res.f$params
+#It has coeffs for the intercept and for the annotation value ("X1")
+# Baseline model is Model1 and its coefficients are 0
+# Coefficients are from multinomial regression and thus on log-odds scale.
 

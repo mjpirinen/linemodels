@@ -118,33 +118,42 @@ The parameters not included in optimization are kept fixed to their initial valu
 The proportion parameters are always optimized.
 }
 \examples{
-#2D example optimizing slope and cor of 2nd model (w/o assuming constant SEs)
+#2D example optimizing slope and cor of 2nd model
+#(w/o assuming constant SEs)
 line.models.optimize(
      X = linemodels.ex1[,c("beta1","beta2")],
      SE = linemodels.ex1[,c("se1","se2")],
-     par.include = rbind(c(F,F,F), c(F,T,T), c(F,F,F)),
+     par.include = rbind(c(FALSE,FALSE,FALSE),
+                         c(FALSE,TRUE,TRUE),
+                         c(FALSE,FALSE,FALSE)),
      force.same.scales = FALSE,
      init.scales = c(0.2, 0.2, 0.2),
      init.slopes = c(0, 0.2, 1),
      init.cors = c(0.995, 0.5, 0.995))
-#2D example assuming constant SEs after scaling the effects by minor allele frequencies
+#2D example assuming constant SEs after scaling the effects
+# by minor allele frequencies.
 # and optimizing scales that are assumed same across the linemodels
 # and slope and cor of the 2nd model as above.
 sc = sqrt(2 * linemodels.ex1$maf * (1 - linemodels.ex1$maf))
 line.models.optimize(
      X = linemodels.ex1[,c("beta1","beta2")]*sc,
      SE = linemodels.ex1[,c("se1","se2")]*sc,
-     par.include = rbind(c(T,F,F), c(T,T,T), c(T,F,F)),
+     par.include = rbind(c(TRUE,FALSE,FALSE),
+                         c(TRUE,TRUE,TRUE),
+                         c(TRUE,FALSE,FALSE)),
      force.same.scales = TRUE,
      init.scales = c(0.2, 0.2, 0.2),
      init.slopes = c(0, 0.2, 1),
      init.cors = c(0.995, 0.5, 0.995),
      assume.constant.SE = TRUE)
-#3D example optimizing all slopes (you can also scale X and SEs and assume constant SE as above to speed up)
+#3D example optimizing all slopes
+#(you can also scale X and SEs and assume constant SE as above to speed up)
 line.models.optimize(
      X = linemodels.ex1[,c("beta1","beta2","beta3")],
      SE = linemodels.ex1[,c("se1","se2","se3")],
-     par.include = list(scales = c(F,F,F), slopes = matrix(TRUE, ncol = 2, nrow = 3), cors = c(F,F,F)),
+     par.include = list(scales = c(FALSE,FALSE,FALSE),
+                        slopes = matrix(TRUE, ncol = 2, nrow = 3),
+                        cors = c(FALSE,FALSE,FALSE)),
      force.same.scales = FALSE,
      init.scales = c(0.2, 0.2, 0.2),
      init.slopes = rbind(c(0, 0), c(0.2, 0), c(0.5, 1)),

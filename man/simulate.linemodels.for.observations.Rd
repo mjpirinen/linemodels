@@ -56,13 +56,15 @@ by accounting for SEs and r.lkhood.
 \examples{
 #2D example
 simulate.linemodels.for.observations(
-   X = linemodels.ex1[,c("beta1","beta2")], SE = linemodels.ex1[,c("se1","se2")],
+   X = linemodels.ex1[,c("beta1","beta2")],
+   SE = linemodels.ex1[,c("se1","se2")],
    scales = c(0.25, 0.25),
    slopes = c(0, 1),
    cors = c(0.995, 0.995))
 #3D example
 simulate.linemodels.for.observations(
-   X = linemodels.ex1[,c("beta1","beta2","beta3")], SE = linemodels.ex1[,c("se1","se2","se3")],
+   X = linemodels.ex1[,c("beta1","beta2","beta3")],
+   SE = linemodels.ex1[,c("se1","se2","se3")],
    scales = c(0.25, 0.25),
    slopes = rbind(c(0, 0), c(1,1)),
    cors = c(0.995, 0.95))

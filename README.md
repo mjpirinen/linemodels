@@ -10,3 +10,5 @@ Pirinen M. linemodels: clustering effects based on linear relationships. 2023. B
 https://doi.org/10.1093/bioinformatics/btad115
 
 Contact: matti.pirinen@helsinki.fi
+
+Acknoweldgements: Mark Daly and Mary-Pat Reeve for discussions and ideas.

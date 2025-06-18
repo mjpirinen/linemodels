@@ -1,15 +1,17 @@
 # Edited by hand
 
+export(log.dmvnorm)
 export(simulate.linemodels.for.observations)
 export(simulate.loglr)
+export(beta.cor.case.control)
 export(line.models)
 export(line.models.optimize)
+export(line.models.with.features)
 export(line.models.with.proportions)
 export(sample.line.model)
+export(slope.for.pair)
 export(visualize.classification.regions)
 export(visualize.line.models)
-export(visualize.scales)
 export(visualize.multidimensional.line.models)
-export(slope.for.pair)
-export(beta.cor.case.control)
-
+export(visualize.scales)
+import(UPG)

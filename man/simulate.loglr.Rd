@@ -119,26 +119,29 @@ which can be used for deriving an empirical P-value.
 simulate.loglr(
    X = linemodels.ex1[,c("beta1","beta2")], SE = linemodels.ex1[,c("se1","se2")],
    n.sims = 2,
-   par.include.null = rbind(c(F,F,F), c(F,F,F)),
+   par.include.null = rbind(rep(FALSE,3), rep(FALSE,3)),
    init.scales.null = c(0.25, 0.25),
    init.slopes.null = c(0, 1),
    init.cors.null = c(0.995, 0.995),
-   par.include.alt = rbind(c(F,F,F), c(F,F,F), c(F,T,F)),
+   par.include.alt = rbind(rep(FALSE,3), rep(FALSE,3), c(FALSE,TRUE,FALSE)),
    init.scales.alt = c(0.25, 0.25, 0.25),
    init.slopes.alt = c(0, 1, 0.5),
    init.cors.alt = c(0.995, 0.995, 0.995))
-# Same as above but scaling effects and SEs to allow SEs to be treated as constant to speed up
+# Same as above but scaling effects and SEs to allow SEs to be treated
+#   as constant to speed up
 # Also estimates the scales of all linemodels and forces same scales across linemodels.
 sc = sqrt(2 * linemodels.ex1$maf * (1 - linemodels.ex1$maf))
 simulate.loglr(
    X = linemodels.ex1[,c("beta1","beta2")]*sc, SE = linemodels.ex1[,c("se1","se2")]*sc,
    n.sims = 2,
-   par.include.null = rbind(c(T,F,F), c(T,F,F)),
+   par.include.null = rbind(c(TRUE,FALSE,FALSE), c(TRUE,FALSE,FALSE)),
    init.scales.null = c(0.15, 0.15),
    init.slopes.null = c(0, 1),
    init.cors.null = c(0.995, 0.995),
    force.same.scales.null = TRUE,
-   par.include.alt = rbind(c(T,F,F), c(T,F,F), c(T,T,F)),
+   par.include.alt = rbind(c(TRUE,FALSE,FALSE),
+                           c(TRUE,FALSE,FALSE),
+                           c(TRUE,TRUE,FALSE)),
    init.scales.alt = c(0.15, 0.15, 0.15),
    init.slopes.alt = c(0, 1, 0.5),
    init.cors.alt = c(0.995, 0.995, 0.995),

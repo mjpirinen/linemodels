@@ -6,15 +6,18 @@
 \title{linemodels example data set 1}
 \format{
 \describe{
-  \item{beta1, beta2}{effects on outcomes 1 and 2}
-  \item{se1, se2}{standard errors of beta1 and beta2}
+  \item{beta1, beta2, beta3}{effects on outcomes 1, 2, 3}
+  \item{se1, se2, se3}{standard errors of beta estimates}
+  \item{maf}{minor allele frequency of variant}
 }
 }
 \usage{
 linemodels.ex1
 }
 \description{
-100 variables, of which 1..20 originating from model (scale = 0.2, slope = 0, cor = 0.995)
-21..60 from (0.2, 0.5, 0.995) and 61..100 from (0.2, 1, 0.995).
+100 genetic variants with associations to three outcomes.
+Variants 1..20 from Model1, 21..60 from Model2 and 61..100 from Model3.
+All models have scale = 0.2 and cor = 0.995.
+Slopes are: Model1 = (0,0), Model2 = (0.5,0.2), Model3 = (1,1).
 }
 \keyword{datasets}
